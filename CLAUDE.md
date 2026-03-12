@@ -1,0 +1,5 @@
+This is a Go application designed to run on a free hosting platform. It sends personalized motivational emails to users on specific days. The emails encourage users to go to the gym using humor and playful teasing, and include a daily workout routine and diet recommendations. The MVP currently supports only 2 users.
+
+The application delivers emails via SMTP, with each user receiving messages according to their personal schedule. Emails are personalized with motivational text, exercises, and diet suggestions, and contain a humorous “call to gym.” The architecture uses Go, free hosting (e.g., Render or Railway), and a simple storage solution such as a config file or lightweight database to store user schedules and preferences.
+
+MVP scope includes supporting 2 users, sending personalized emails with workout and diet, and scheduled delivery. To use, configure SMTP credentials, set user schedules, define exercises and diet, deploy the app, and it will automatically send emails on scheduled days.
