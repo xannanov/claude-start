@@ -1,4 +1,8 @@
+# Environment variables
 .env
+.env.local
+
+# Go binary
 *.exe
 *.exe~
 *.dll
@@ -6,4 +10,20 @@
 *.dylib
 *.test
 *.out
+
+# Dependencies
 go.sum
+
+# Docker volumes
+postgres_data/
+postgres_data_dev/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

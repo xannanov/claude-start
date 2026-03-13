@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: daily-email-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: daily_email_sender
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network-dev
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: daily-email-app-dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:admin@postgres:5432/daily_email_sender?sslmode=disable&client_encoding=UTF-8
+      SMTP_CONFIG: '{"Host":"smtp.yandex.ru","Port":465,"User":"your-email@yandex.com","Password":"your-password"}'
+      EMAIL_CONFIG: '{"From":"sender@example.com","To":"recipient@example.com"}'
+    volumes:
+      - .:/app
+      - /app/daily-email-sender
+    networks:
+      - app-network-dev
+    command: sh -c "go run main.go init-db && go run main.go add-user && go run main.go run-scheduler"
+
+volumes:
+  postgres_data_dev:
+
+networks:
+  app-network-dev:
+    driver: bridge

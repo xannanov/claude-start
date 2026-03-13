@@ -301,9 +301,227 @@ make add-schedule
 # Выбрать пользователя и задать расписание
 ```
 
+## Docker
+
+Приложение полностью работает в Docker через docker-compose!
+
+### 🚀 Быстрый старт (3 шага)
+
+1. **Создайте .env файл**:
+```bash
+cp .env.example .env
+# Отредактируйте .env и настройте SMTP
+```
+
+2. **Соберите образы**:
+```bash
+make docker-build
+```
+
+3. **Запустите контейнеры**:
+```bash
+make docker-up
+```
+
+### Полный процесс развертывания
+
+#### Шаг 1: Подготовка
+
+Создайте .env файл из примера:
+```bash
+cp .env.example .env
+```
+
+Отредактируйте `.env` с вашими SMTP настройками:
+```env
+SMTP_CONFIG={"Host":"smtp.yandex.ru","Port":465,"User":"your-email@yandex.com","Password":"your-password"}
+EMAIL_CONFIG={"From":"sender@example.com","To":"recipient@example.com"}
+```
+
+**Для Gmail:** Вам нужен App Password
+1. Google Account → Security → 2-Step Verification
+2. App Passwords → Create new app password
+3. Скопируйте 16-символьный пароль
+
+#### Шаг 2: Сборка и запуск
+
+```bash
+# Собрать Docker образы
+make docker-build
+
+# Запустить контейнеры (PostgreSQL и приложение)
+make docker-up
+```
+
+Контейнеры автоматически запустятся:
+- **postgres** (база данных) - порт 5432
+- **app** (Go приложение) - scheduler запущен
+
+#### Шаг 3: Инициализация базы данных
+
+База данных инициализируется автоматически при старте контейнера. Проверьте статус:
+```bash
+make docker-ps
+```
+
+#### Шаг 4: Создание пользователей
+
+```bash
+make docker-add-user
+```
+
+Вам нужно будет ввести данные пользователя интерактивно:
+```
+Email: user@example.com
+Имя (First Name): John
+Фамилия (Last Name): Doe
+Возраст: 30
+Пол (male/female/other): male
+Рост (cm): 175
+Вес (kg): 75
+Цель: muscle_gain
+Уровень активности: active
+```
+
+#### Шаг 5: (Опционально) Настройка расписания
+
+Добавьте расписание для пользователя:
+```bash
+make docker-add-user
+# Выберите пользователя из списка
+# Задайте день недели, время и тип email
+```
+
+### Docker команды
+
+| Команда | Описание |
+|---------|----------|
+| `make docker-build` | Собрать Docker образы |
+| `make docker-up` | Запустить контейнеры |
+| `make docker-down` | Остановить контейнеры |
+| `make docker-restart` | Перезапустить контейнеры |
+| `make docker-logs` | Показать логи в реальном времени |
+| `make docker-ps` | Показать статус контейнеров |
+| `make docker-shell` | Открыть shell в приложении |
+| `make docker-init-db` | Инициализировать базу данных |
+| `make docker-add-user` | Добавить пользователя |
+| `make docker-clean` | Очистить все контейнеры и volumes |
+
+### Просмотр логов
+
+Для мониторинга работы приложения:
+```bash
+make docker-logs
+```
+
+### Внутри контейнеров
+
+#### Войти в приложение:
+```bash
+make docker-shell
+./daily-email-sender --help
+```
+
+#### Войти в PostgreSQL:
+```bash
+docker-compose exec postgres psql -U postgres -d daily_email_sender
+```
+
+### Работа с данными
+
+#### Посмотреть пользователей:
+```bash
+make docker-shell
+./daily-email-sender list-users
+```
+
+#### Создать пользователя через PostgreSQL:
+```bash
+docker-compose exec postgres psql -U postgres -d daily_email_sender
+SELECT * FROM users;
+```
+
+### Troubleshooting
+
+**Контейнеры не запускаются:**
+```bash
+make docker-logs
+make docker-restart
+```
+
+**Ошибка при инициализации БД:**
+```bash
+make docker-shell
+./daily-email-sender init-db
+```
+
+**Не создается пользователь:**
+```bash
+make docker-ps
+make docker-shell
+./daily-email-sender add-user
+```
+
+**Email не отправляется:**
+1. Проверьте SMTP настройки в .env
+2. Убедитесь в правильности пароля
+3. Проверьте логи: `make docker-logs`
+4. Убедитесь, что нет ограничений на отправку (Yandex: 1000 писем/день)
+
+### Структура контейнеров
+
+```
+docker-compose.yml
+├── postgres:15-alpine
+│   ├── База данных PostgreSQL
+│   ├── Автоматическая инициализация схемы
+│   └── Персистентные данные через volumes
+│
+└── app (Go приложение)
+    ├── daily-email-sender.exe
+    ├── Scheduler работает в фоне
+    └── Автоматически проверяет расписание каждую минуту
+```
+
+### Production deployment
+
+Для продакшена:
+1. Настройте .env с реальными данными
+2. Запустите: `make docker-build && make docker-up`
+3. Добавьте пользователей и расписание
+4. Для автозапуска используйте systemd или supervisor
+
+### Troubleshooting
+
+**Контейнеры не запускаются:**
+```bash
+# Проверьте логи
+make docker-logs
+
+# Перезапустите
+make docker-restart
+```
+
+**Не создается пользователь:**
+```bash
+# Проверьте статус контейнера
+make docker-ps
+
+# Откройте shell и проверьте базу
+make docker-shell
+./daily-email-sender list-users
+```
+
+**Email не отправляется:**
+1. Проверьте SMTP настройки в .env
+2. Убедитесь в правильности пароля
+3. Проверьте логи: `make docker-logs`
+4. Убедитесь, что нет ограничений на отправку (Yandex: 1000 писем/день)
+
 ## Требования
 
-- **Go** 1.21 или выше
+- **Go** 1.21 или выше (только для локальной разработки без Docker)
+- **Docker** и **Docker Compose** (для запуска в контейнерах)
 - **PostgreSQL** 17+ (или совместимая версия)
 - Пароль от PostgreSQL пользователя (обычно "admin")
 - SMTP доступ к email сервису
