@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: daily-email-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: daily_email_sender
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: daily-email-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:admin@postgres:5432/daily_email_sender?sslmode=disable&client_encoding=UTF-8
+      SMTP_CONFIG: '{"Host":"smtp.yandex.ru","Port":465,"User":"your-email@yandex.com","Password":"your-password"}'
+      EMAIL_CONFIG: '{"From":"sender@example.com","To":"recipient@example.com"}'
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - app-network
+
+  # Database service uses the same network, so we can reference it as "postgres"
+  # The URL already uses "postgres" which resolves to the postgres service name
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
