@@ -1,4 +1,4 @@
-.PHONY: all run build test clean init-db run-scheduler deps full-setup help
+.PHONY: all run build test clean init-db run-scheduler deps full-setup help docker-build docker-up docker-down docker-logs docker-ps docker-clean docker-init-db docker-add-user docker-shell docker-restart docker-up-dev
 
 # All commands
 all: build
@@ -100,3 +100,100 @@ add-schedule:
 full-setup:
 	@echo "Running full setup..."
 	$(MAKE) add-user
+
+# Docker targets
+docker-build:
+	@echo "Building Docker images..."
+	docker-compose build
+	@echo "Build complete!"
+
+docker-up:
+	@echo "Starting Docker containers..."
+	docker-compose up -d
+	@echo "Containers started! PostgreSQL is available at localhost:5432"
+
+docker-down:
+	@echo "Stopping Docker containers..."
+	docker-compose down
+	@echo "Containers stopped!"
+
+docker-logs:
+	docker-compose logs -f
+
+docker-ps:
+	docker-compose ps
+
+docker-clean:
+	@echo "Cleaning Docker containers and volumes..."
+	docker-compose down -v
+	@echo "Clean complete!"
+
+docker-init-db:
+	@echo "Initializing database inside containers..."
+	docker-compose exec app ./daily-email-sender init-db
+	@echo "Database initialized!"
+
+docker-add-user:
+	@echo "Adding user..."
+	docker-compose exec app ./daily-email-sender add-user
+	@echo "User added!"
+
+docker-shell:
+	docker-compose exec app sh
+
+docker-restart:
+	@echo "Restarting containers..."
+	docker-compose restart
+	@echo "Restart complete!"
+
+# Docker targets
+docker-build:
+	@echo "Building Docker images..."
+	docker-compose build
+	@echo "Build complete!"
+
+docker-up:
+	@echo "Starting Docker containers..."
+	docker-compose up -d
+	@echo "Containers started! PostgreSQL is available at localhost:5432"
+
+docker-down:
+	@echo "Stopping Docker containers..."
+	docker-compose down
+	@echo "Containers stopped!"
+
+docker-logs:
+	docker-compose logs -f
+
+docker-ps:
+	docker-compose ps
+
+docker-clean:
+	@echo "Cleaning Docker containers and volumes..."
+	docker-compose down -v
+	@echo "Clean complete!"
+
+docker-init-db:
+	@echo "Initializing database inside containers..."
+	docker-compose exec app ./daily-email-sender init-db
+	@echo "Database initialized!"
+
+docker-add-user:
+	@echo "Adding user..."
+	docker-compose exec app ./daily-email-sender add-user
+	@echo "User added!"
+
+docker-shell:
+	docker-compose exec app sh
+
+docker-restart:
+	@echo "Restarting containers..."
+	docker-compose restart
+	@echo "Restart complete!"
+
+# Docker development setup
+docker-up-dev:
+	@echo "Starting Docker containers in development mode..."
+	docker-compose -f docker-compose.dev.yml up -d
+	@echo "Containers started in development mode!"
+	@echo "To initialize and add user, run: make docker-dev-setup"

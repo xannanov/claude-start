@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS user_schedules (
     email_type VARCHAR(20) CHECK (email_type IN ('morning', 'afternoon', 'evening')),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, day_of_week, time_hour, time_minute)
 );
 
