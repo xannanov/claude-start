@@ -37,10 +37,9 @@ services:
       EMAIL_CONFIG: '{"From":"sender@example.com","To":"recipient@example.com"}'
     volumes:
       - .:/app
-      - /app/daily-email-sender
     networks:
       - app-network-dev
-    command: sh -c "go run main.go init-db && go run main.go add-user && go run main.go run-scheduler"
+    command: go run . run-scheduler
 
 volumes:
   postgres_data_dev:
