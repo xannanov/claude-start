@@ -50,7 +50,7 @@ func GetUserByID(id string) (*User, error) {
 
 	query := `
 		SELECT id, email, first_name, last_name, age, gender,
-		       height_cm, weight_kg, goal, activity_level, workout_preferences
+		       height_cm, weight_kg, goal, activity_level
 		FROM users
 		WHERE id = $1 AND is_active = true
 	`
@@ -69,7 +69,6 @@ func GetUserByID(id string) (*User, error) {
 		&user.WeightKg,
 		&user.Goal,
 		&user.ActivityLevel,
-		&user.WorkoutPreferences,
 	)
 
 	if err == sql.ErrNoRows {
@@ -90,7 +89,7 @@ func GetUserByEmail(email string) (*User, error) {
 
 	query := `
 		SELECT id, email, first_name, last_name, age, gender,
-		       height_cm, weight_kg, goal, activity_level, workout_preferences
+		       height_cm, weight_kg, goal, activity_level
 		FROM users
 		WHERE email = $1 AND is_active = true
 	`
@@ -109,7 +108,6 @@ func GetUserByEmail(email string) (*User, error) {
 		&user.WeightKg,
 		&user.Goal,
 		&user.ActivityLevel,
-		&user.WorkoutPreferences,
 	)
 
 	if err == sql.ErrNoRows {
@@ -164,8 +162,8 @@ func CreateUser(db *sql.DB, user *User) error {
 	query := `
 		INSERT INTO users (
 			email, first_name, last_name, age, gender,
-			height_cm, weight_kg, goal, activity_level, workout_preferences, is_active
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			height_cm, weight_kg, goal, activity_level, is_active
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -180,7 +178,6 @@ func CreateUser(db *sql.DB, user *User) error {
 		user.WeightKg,
 		user.Goal,
 		user.ActivityLevel,
-		user.WorkoutPreferences,
 		true,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
@@ -226,7 +223,7 @@ func GetAllUsers() ([]User, error) {
 
 	query := `
 		SELECT id, email, first_name, last_name, age, gender,
-		       height_cm, weight_kg, goal, activity_level, workout_preferences,
+		       height_cm, weight_kg, goal, activity_level,
 		       created_at, updated_at
 		FROM users
 		WHERE is_active = true
@@ -253,7 +250,6 @@ func GetAllUsers() ([]User, error) {
 			&user.WeightKg,
 			&user.Goal,
 			&user.ActivityLevel,
-			&user.WorkoutPreferences,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 		)

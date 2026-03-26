@@ -99,16 +99,15 @@ func (cli *CLI) AddUserInteractive() error {
 
 	// Create user
 	user := &User{
-		Email:             strings.TrimSpace(email),
-		FirstName:         strings.TrimSpace(firstName),
-		LastName:          strings.TrimSpace(lastName),
-		Age:               age,
-		Gender:            gender,
-		HeightCm:          height,
-		WeightKg:          weight,
-		Goal:              goal,
-		ActivityLevel:     activityLevel,
-		WorkoutPreferences: make(JSONB),
+		Email:         strings.TrimSpace(email),
+		FirstName:     strings.TrimSpace(firstName),
+		LastName:      strings.TrimSpace(lastName),
+		Age:           age,
+		Gender:        gender,
+		HeightCm:      height,
+		WeightKg:      weight,
+		Goal:          goal,
+		ActivityLevel: activityLevel,
 	}
 
 	if err := CreateUser(db, user); err != nil {

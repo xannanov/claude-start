@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS users (
     weight_kg DECIMAL(5, 2),
     goal VARCHAR(50) CHECK (goal IN ('weight_loss', 'muscle_gain', 'maintenance', 'general_fitness')),
     activity_level VARCHAR(50) CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active')),
-    workout_preferences JSONB,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -38,16 +37,3 @@ CREATE TABLE IF NOT EXISTS user_schedules (
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_schedules_user_id ON user_schedules(user_id);
 CREATE INDEX IF NOT EXISTS idx_schedules_day_time ON user_schedules(day_of_week, time_hour, time_minute);
-
--- Insert default schedule for testing
-INSERT INTO user_schedules (user_id, day_of_week, time_hour, time_minute, email_type, is_active)
-SELECT
-    id,
-    EXTRACT(ISODOW FROM CURRENT_DATE)::INTEGER - 1, -- Monday (0)
-    8, -- 8:00 AM
-    0,
-    'morning',
-    true
-FROM users
-WHERE email = 'voda2600@gmail.com' OR (SELECT COUNT(*) = 0)
-ON CONFLICT DO NOTHING;

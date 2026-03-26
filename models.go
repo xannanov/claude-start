@@ -1,9 +1,6 @@
 package main
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -19,7 +16,6 @@ type User struct {
 	WeightKg           float64     `json:"weight_kg"`
 	Goal               string      `json:"goal"`
 	ActivityLevel      string      `json:"activity_level"`
-	WorkoutPreferences JSONB       `json:"workout_preferences"`
 	CreatedAt          time.Time   `json:"created_at"`
 	UpdatedAt          time.Time   `json:"updated_at"`
 }
@@ -33,27 +29,6 @@ type UserSchedule struct {
 	TimeMinute  int    `json:"time_minute"`
 	EmailType   string `json:"email_type"` // morning, afternoon, evening
 	IsActive    bool   `json:"is_active"`
-}
-
-// JSONB implements driver.Valuer and sql.Scanner for JSONB type
-type JSONB map[string]interface{}
-
-// Value implements driver.Valuer interface
-func (j JSONB) Value() (driver.Value, error) {
-	return json.Marshal(j)
-}
-
-// Scan implements sql.Scanner interface
-func (j *JSONB) Scan(value interface{}) error {
-	if value == nil {
-		*j = make(JSONB)
-		return nil
-	}
-	bytes, ok := value.([]byte)
-	if !ok {
-		return fmt.Errorf("failed to unmarshal JSONB value: %v", value)
-	}
-	return json.Unmarshal(bytes, j)
 }
 
 // WorkoutPlan represents a personalized workout
