@@ -88,9 +88,9 @@ func runScheduler() error {
 	if err := ConnectToDatabase(); err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
-	defer CloseDatabase()
 
-	// Run scheduler with 1-minute interval
+	// Run scheduler with 1-minute interval.
+	// CloseDatabase is called inside RunScheduler after graceful stop.
 	RunScheduler(1 * time.Minute)
 	return nil
 }

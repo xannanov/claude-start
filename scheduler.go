@@ -38,6 +38,17 @@ type Message struct {
 }
 
 
+// moscowTZ holds the Moscow timezone location (UTC+3), loaded once at startup.
+var moscowTZ *time.Location
+
+func init() {
+	var err error
+	moscowTZ, err = time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		log.Fatalf("failed to load Moscow timezone: %v", err)
+	}
+}
+
 // Scheduler manages periodic email sending based on user schedules
 type Scheduler struct {
 	interval    time.Duration
@@ -110,13 +121,13 @@ func (s *Scheduler) Stop() {
 
 // checkAndSendEmails checks if any emails should be sent based on schedules
 func (s *Scheduler) checkAndSendEmails() {
-	// Get current time
-	now := time.Now()
+	// Get current Moscow time
+	now := time.Now().In(moscowTZ)
 
-	// Get day of week (0 = Monday, 6 = Sunday)
-	dayOfWeek := int(now.Weekday())
+	// Get day of week: Go Weekday() returns 0=Sun, we need 0=Mon
+	dayOfWeek := (int(now.Weekday()) + 6) % 7
 
-	// Get current hour and minute
+	// Get current hour and minute (Moscow)
 	currentHour := now.Hour()
 	currentMinute := now.Minute()
 
@@ -177,8 +188,8 @@ func (s *Scheduler) sendEmailForSchedule(schedule UserSchedule) {
 
 // getNextRuns returns schedules that will run within the next specified minutes
 func getNextRuns(hoursAhead int) ([]UserSchedule, error) {
-	now := time.Now()
-	dayOfWeek := int(now.Weekday())
+	now := time.Now().In(moscowTZ)
+	dayOfWeek := (int(now.Weekday()) + 6) % 7
 	nextDay := now.AddDate(0, 0, 1)
 
 	var allSchedules []UserSchedule
@@ -202,7 +213,7 @@ func getNextRuns(hoursAhead int) ([]UserSchedule, error) {
 	// Filter schedules by time range
 	var withinRange []UserSchedule
 	for _, schedule := range allSchedules {
-		scheduleTime := time.Date(now.Year(), now.Month(), now.Day(), schedule.TimeHour, schedule.TimeMinute, 0, 0, time.Local)
+		scheduleTime := time.Date(now.Year(), now.Month(), now.Day(), schedule.TimeHour, schedule.TimeMinute, 0, 0, moscowTZ)
 		if scheduleTime.After(now) && scheduleTime.Before(nextDay) {
 			withinRange = append(withinRange, schedule)
 		}
@@ -222,8 +233,8 @@ func getNextRuns(hoursAhead int) ([]UserSchedule, error) {
 // displayNextRuns shows the next scheduled email runs
 func (s *Scheduler) displayNextRuns() {
 	log.Printf("Next scheduled emails:")
-	now := time.Now()
-	dayOfWeek := int(now.Weekday())
+	now := time.Now().In(moscowTZ)
+	dayOfWeek := (int(now.Weekday()) + 6) % 7
 	dayNames := []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
 
 	log.Printf("Current time: %s, Day: %d (%s) (0=Mon, 6=Sun)", now.Format("2006-01-02 15:04:05"), dayOfWeek, dayNames[dayOfWeek])
@@ -336,6 +347,7 @@ func RunScheduler(interval time.Duration) {
 	<-sigChan
 	log.Println("\nReceived shutdown signal")
 	scheduler.Stop()
+	CloseDatabase()
 	log.Println("Application shutting down")
 }
 
