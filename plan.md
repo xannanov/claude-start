@@ -29,50 +29,50 @@
 
 ---
 
-## Фаза 2. Фикс критических багов
+## ~~Фаза 2. Фикс критических багов~~ ✅
 
-### 2.1 Day-of-week сдвиг (КРИТИЧНО — scheduler не работает)
-**Файл:** `scheduler.go:117`
-**Баг:** `int(now.Weekday())` в Go возвращает 0=Sunday, а в БД и CLI подразумевается 0=Monday.
-**Результат:** письма уходят не в тот день недели.
+### ~~2.1 Day-of-week сдвиг (КРИТИЧНО — scheduler не работает)~~
+~~**Файл:** `scheduler.go:117`~~
+~~**Баг:** `int(now.Weekday())` в Go возвращает 0=Sunday, а в БД и CLI подразумевается 0=Monday.~~
+~~**Результат:** письма уходят не в тот день недели.~~
 
-**Фикс:** Заменить на:
-```go
-moscowTime := now.In(moscowTZ)
-dayOfWeek := (int(moscowTime.Weekday()) + 6) % 7 // 0=Пн, 6=Вс
-```
-Применить эту же формулу **везде**, где используется `Weekday()`:
-- `scheduler.go:117` — основной цикл проверки
-- `scheduler.go:227` — `displayNextRuns()`
-- `scheduler.go:262-273` — расчёт daysUntil
+~~**Фикс:** Заменить на:~~
+~~```go~~
+~~moscowTime := now.In(moscowTZ)~~
+~~dayOfWeek := (int(moscowTime.Weekday()) + 6) % 7 // 0=Пн, 6=Вс~~
+~~```~~
+~~Применить эту же формулу **везде**, где используется `Weekday()`:~~
+~~- `scheduler.go:117` — основной цикл проверки~~
+~~- `scheduler.go:227` — `displayNextRuns()`~~
+~~- `scheduler.go:262-273` — расчёт daysUntil~~
 
-### 2.2 DB connection закрывается до работы scheduler (КРИТИЧНО)
-**Файл:** `main.go:88-91`
-**Баг:** `defer CloseDatabase()` срабатывает при выходе из функции `runScheduler()`, а scheduler крутится в горутине. Все запросы к БД падают.
+### ~~2.2 DB connection закрывается до работы scheduler (КРИТИЧНО)~~
+~~**Файл:** `main.go:88-91`~~
+~~**Баг:** `defer CloseDatabase()` срабатывает при выходе из функции `runScheduler()`, а scheduler крутится в горутине. Все запросы к БД падают.~~
 
-**Фикс:** Убрать `defer CloseDatabase()`. Закрывать соединение в обработчике сигналов (SIGINT/SIGTERM), **после** остановки scheduler:
-```go
-scheduler.Stop()
-CloseDatabase()
-```
+~~**Фикс:** Убрать `defer CloseDatabase()`. Закрывать соединение в обработчике сигналов (SIGINT/SIGTERM), **после** остановки scheduler:~~
+~~```go~~
+~~scheduler.Stop()~~
+~~CloseDatabase()~~
+~~```~~
 
-### 2.3 Фикс schema.sql
-**Баг:** `OR (SELECT COUNT(*) = 0)` — всегда false, дефолтный INSERT не работает.
-**Фикс:** Удалить весь блок INSERT с захардкоженным пользователем (см. 1.4). Оставить только CREATE TABLE + индексы.
+### ~~2.3 Фикс schema.sql~~
+~~**Баг:** `OR (SELECT COUNT(*) = 0)` — всегда false, дефолтный INSERT не работает.~~
+~~**Фикс:** Удалить весь блок INSERT с захардкоженным пользователем (см. 1.4). Оставить только CREATE TABLE + индексы.~~
 
-### 2.4 Московское время во всём scheduler
-**Файл:** `scheduler.go:114`
-**Баг:** `time.Now()` использует серверный часовой пояс.
+### ~~2.4 Московское время во всём scheduler~~
+~~**Файл:** `scheduler.go:114`~~
+~~**Баг:** `time.Now()` использует серверный часовой пояс.~~
 
-**Фикс:** Загружать timezone один раз при старте:
-```go
-var moscowTZ *time.Location
+~~**Фикс:** Загружать timezone один раз при старте:~~
+~~```go~~
+~~var moscowTZ *time.Location~~
 
-func init() {
-    moscowTZ, _ = time.LoadLocation("Europe/Moscow")
-}
-```
-Использовать `time.Now().In(moscowTZ)` во всех местах, где сравнивается время с расписанием.
+~~func init() {~~
+~~    moscowTZ, _ = time.LoadLocation("Europe/Moscow")~~
+~~}~~
+~~```~~
+~~Использовать `time.Now().In(moscowTZ)` во всех местах, где сравнивается время с расписанием.~~
 
 ---
 
