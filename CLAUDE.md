@@ -1,5 +1,51 @@
-This is a Go application designed to run on a free hosting platform. It sends personalized motivational emails to users on specific days. The emails encourage users to go to the gym using humor and playful teasing, and include a daily workout routine and diet recommendations. The MVP currently supports only 2 users.
+Go-приложение для отправки персонализированных мотивационных писем с тренировками и питанием на почту. Пользователь регистрируется, вводит свои данные (возраст, пол, рост, вес, цель, уровень активности), задаёт расписание уведомлений. Сервис по расписанию отправляет каждому пользователю уникальное письмо на email.
 
-The application delivers emails via SMTP, with each user receiving messages according to their personal schedule. Emails are personalized with motivational text, exercises, and diet suggestions, and contain a humorous “call to gym.” The architecture uses Go, free hosting (e.g., Render or Railway), and a simple storage solution such as a config file or lightweight database to store user schedules and preferences.
+## Архитектура
 
-MVP scope includes supporting 2 users, sending personalized emails with workout and diet, and scheduled delivery. To use, configure SMTP credentials, set user schedules, define exercises and diet, deploy the app, and it will automatically send emails on scheduled days.
+- **Язык:** Go 1.21+
+- **БД:** PostgreSQL (таблицы: users, user_schedules, email_logs, workout_history)
+- **SMTP:** Yandex (smtp.yandex.ru:465, лимит ~500 писем/день)
+- **AI:** DeepSeek API (deepseek-chat) — генерация тренировок, питания, мотивации
+- **UI:** Server-side rendering (Go html/template + Pico.css)
+- **Авторизация:** bcrypt + session cookie / JWT
+- **Таймзона:** Moscow (UTC+3), только русский язык
+- **Целевая нагрузка:** ~1000 пользователей/месяц
+
+## Структура пакетов (целевая, см. plan.md Фаза 3.2)
+
+```
+cmd/server/main.go          — точка входа
+internal/config/             — загрузка конфигурации из .env
+internal/database/           — Store (все DB-операции)
+internal/scheduler/          — логика расписания и отправки
+internal/email/              — SMTP + HTML-шаблоны
+internal/models/             — User, UserSchedule, WorkoutPlan, NutritionPlan
+internal/auth/               — bcrypt, сессии, middleware
+internal/api/                — HTTP-хендлеры, роутинг, middleware
+internal/ai/                 — DeepSeek-клиент, промпты, парсинг ответов
+internal/cli/                — CLI-интерфейс (legacy)
+```
+
+Текущее состояние: всё в `package main` (фаза 3 ещё не выполнена).
+
+## Ключевые решения
+
+- **Контент генерируется AI (DeepSeek):** тренировка, питание, мотивация — всё уникальное для каждого пользователя и каждого дня. Захардкоженные шаблоны удаляются после интеграции AI.
+- **Чередование мышечных групп:** таблица `workout_history` хранит предыдущие тренировки, промпт учитывает их для ротации.
+- **При ошибке AI:** отправляется письмо-заглушка (не молчим, не используем fallback-шаблоны).
+- **Дедупликация:** таблица `email_logs` предотвращает повторную отправку.
+- **Антиспам:** rate limit по IP, CSRF, honeypot, блокировка после 5 неудачных логинов.
+
+## Текущий статус
+
+Фазы 1-2 выполнены (чистка + критические баги). Следующая — Фаза 3 (рефакторинг архитектуры).
+Полный план с деталями: `plan.md`.
+
+## Правила разработки
+
+- Весь пользовательский текст и UI — на русском языке
+- Всё время — Moscow TZ (`Europe/Moscow`), без мультитаймзон
+- Не коммитить `.env` с реальными credentials
+- `go.sum` должен быть в репозитории (не в `.gitignore`)
+- Тесты: покрытие ≥70% критических путей
+- Логирование: `log/slog` (не `log.Printf`)
