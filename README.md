@@ -1,561 +1,84 @@
 # Daily Email Sender
 
-Go-приложение для отправки персонализированных мотивационных писем с тренировками и питанием. Пользователь регистрируется, вводит свои данные, задаёт расписание — и получает уникальные письма с AI-сгенерированным контентом.
+Go-приложение для отправки персонализированных мотивационных писем с тренировками и питанием. Пользователь регистрируется, задаёт расписание — и получает уникальные письма с AI-сгенерированным контентом.
 
-**Статус:** в разработке. Текущая фаза — рефакторинг архитектуры (см. `plan.md`).
-**Целевая аудитория:** ~1000 пользователей/месяц.
+**Статус:** Фазы 1–2 выполнены. Текущая — Фаза 3 (рефакторинг архитектуры). Полный план: `plan.md`.
 
-## Возможности (текущие)
+---
 
-- 📧 Отправка персонализированных писем (утро, день, вечер)
-- 👤 Управление пользователями через CLI
-- 📅 Настраиваемое расписание для каждого пользователя
-- 🏋️ Планы тренировок на основе целей (пока захардкожены, AI в разработке)
-- 🍎 Планы питания на основе параметров (пока захардкожены, AI в разработке)
-- 🗄️ PostgreSQL база данных
-- ⏰ Автоматическая отправка по расписанию (Moscow TZ)
+## Требования
 
-## Планируемые возможности
+- Go 1.21+
+- PostgreSQL 17+
+- SMTP-аккаунт (Yandex, Gmail, Microsoft)
 
-- 🌐 Веб-интерфейс (регистрация, логин, личный кабинет, управление расписанием)
-- 🤖 AI-генерация уникальных тренировок и питания через DeepSeek API
-- 🔐 Авторизация (логин + пароль)
-- 🛡️ Защита от спама (rate limit, CSRF, honeypot)
-- 📊 Логирование отправок и дедупликация
-
-Полный план: `plan.md`
+---
 
 ## Установка
 
-1. Установите PostgreSQL 17+
-2. Установите Go 1.21 или выше
-3. Склонируйте репозиторий
-
 ```bash
-cd /path/to/claude-start
-```
-
-### Установка зависимостей
-
-```bash
+cp .env.example .env
+# Отредактируйте .env: DATABASE_URL, SMTP_CONFIG
 make deps
-```
-
-Или напрямую:
-```bash
-go mod download
-```
-
-### Сборка
-
-```bash
+make init-db
 make build
 ```
 
-Или напрямую:
-```bash
-go build -o daily-email-sender.exe .
-```
-
-## Настройка
-
-1. Скопируйте `.env.example` в `.env`:
-
-```bash
-cp .env.example .env
-```
-
-2. Отредактируйте `.env` файл с вашими данными:
+### Пример .env
 
 ```env
-SMTP_CONFIG={"Host":"smtp.yandex.ru","Port":465,"User":"your-email@yandex.com","Password":"your-password"}
-EMAIL_CONFIG={"From":"your-email@yandex.com"}
-DATABASE_URL="postgres://postgres:YOUR_PASSWORD@localhost:5432/daily_email_sender?sslmode=disable&client_encoding=UTF-8"
+SMTP_CONFIG={"Host":"smtp.yandex.ru","Port":465,"User":"you@yandex.com","Password":"pass"}
+EMAIL_CONFIG={"From":"you@yandex.com"}
+DATABASE_URL="postgres://postgres:PASSWORD@localhost:5432/daily_email_sender?sslmode=disable&client_encoding=UTF-8"
 ```
 
-### Настройка PostgreSQL
-
-1. Создайте базу данных (используйте пароль от PostgreSQL):
-
-```bash
-"C:/Program Files/PostgreSQL/17/bin/psql" -U postgres -c "CREATE DATABASE daily_email_sender;"
-```
-
-Или через pgAdmin / pgAdmin 4:
-- Откройте pgAdmin
-- Создайте новую базу данных: daily_email_sender
-- Используйте пользователя postgres
-
-2. Инициализируйте схему:
-
-```bash
-make init-db
-```
-
-Или напрямую:
-```bash
-go run . init-db
-```
-
-### Настройка SMTP
-
-- **Yandex Mail**: `smtp.yandex.ru:465` (SSL)
-- **Gmail**: `smtp.gmail.com:587` (TLS) - нужен App Password
-- **Microsoft**: `smtp.office365.com:587` (TLS)
-
-**Советы для Gmail:**
-1. Включите 2FA в аккаунте Google
-2. Создайте App Password: Settings → Security → 2-Step Verification → App Passwords
-3. Используйте этот пароль в .env файле
+---
 
 ## Использование
 
-### 1. Создать пользователя
+```bash
+make add-user        # Добавить пользователя
+make list-users      # Список пользователей
+make add-schedule    # Задать расписание отправки
+make run-scheduler   # Запустить планировщик
+```
+
+---
+
+## Docker
 
 ```bash
-make add-user
+cp .env.example .env   # Настройте SMTP
+make docker-build
+make docker-up
+make docker-add-user
 ```
 
-Интерактивно введите:
-- **Email** (обязательно)
-- **Имя (First Name)** (обязательно)
-- **Фамилия (Last Name)** (обязательно)
-- **Возраст** (обязательно)
-- **Пол**: male / female / other
-- **Рост** (в сантиметрах)
-- **Вес** (в килограммах)
-- **Цель**: weight_loss / muscle_gain / maintenance / general_fitness
-- **Уровень активности**: sedentary / light / moderate / active / very_active
+| Команда | Описание |
+|---------|----------|
+| `make docker-up` | Запустить контейнеры |
+| `make docker-down` | Остановить |
+| `make docker-logs` | Логи в реальном времени |
+| `make docker-shell` | Shell в контейнере приложения |
+| `make docker-clean` | Удалить контейнеры и volumes |
 
-**Пример ввода:**
-```
-Email: user@example.com
-Имя (First Name): John
-Фамилия (Last Name): Doe
-Возраст: 30
-Пол (male/female/other): male
-Рост (cm): 175
-Вес (kg): 75
-Цель (weight_loss/muscle_gain/maintenance/general_fitness): muscle_gain
-Уровень активности (sedentary/light/moderate/active/very_active): active
-```
-
-### 2. Посмотреть список пользователей
-
-```bash
-make list-users
-```
-
-### 3. Добавить расписание для пользователя
-
-```bash
-make add-schedule
-```
-
-Выберите пользователя из списка и задайте:
-- **День недели** (0-6: Пн-Вс)
-- **Время** (часы и минуты)
-- **Тип email**: morning / afternoon / evening
-
-**Пример:**
-```
-Доступные пользователи:
-1. user@example.com (uuid-here)
-
-Выберите пользователя (1-1): 1
-
-Добавление расписания для: user@example.com
-День недели (0-Пн, 1-Вт, 2-Ср, 3-Чт, 4-Пт, 5-Сб, 6-Вс): 0
-Час (0-23): 9
-Минута (0-59): 0
-Тип email (morning/afternoon/evening): morning
-
-✓ Расписание успешно добавлено!
-```
-
-### 4. Запустить планировщик
-
-```bash
-make run-scheduler
-```
-
-Планировщик работает в фоновом режиме:
-- Проверяет расписание каждую минуту
-- Отправляет письма в назначенное время
-- **Важно**: Закройте терминал чтобы остановить планировщик
-
-**Альтернатива**: Запустите в отдельном терминале в фоне:
-
-```bash
-# Терминал 1
-make run-scheduler
-```
-
-```bash
-# Терминал 2 (доступ только для теста)
-# Откройте базу данных и проверьте отправку
-```
-
-### 5. Помощь
-
-```bash
-make run
-```
-
-## Makefile команды
-
-```bash
-make run                # Показать справку по командам
-make build              # Сборка приложения
-make deps               # Скачать зависимости
-make clean              # Очистка (удалить бинарник)
-make test               # Тест компиляции (TODO: будет заменён на go test ./...)
-make init-db            # Инициализация базы данных
-make run-scheduler      # Запустить планировщик
-make add-user           # Добавить пользователя (интерактивно)
-make list-users         # Показать список пользователей
-make add-schedule       # Добавить расписание (интерактивно)
-make full-setup         # Полный цикл создания пользователя
-```
+---
 
 ## Структура проекта
 
 ```
-.
-├── main.go              # Точка входа с CLI командами
-├── cli.go               # CLI функции для работы с пользователями
-├── db.go                # Функции работы с базой данных
-├── scheduler.go         # Планировщик email отправок
-├── email_templates.go   # HTML шаблоны email
-├── models.go            # Модели данных (User, UserSchedule, etc.)
-├── schema.sql           # SQL схема базы данных
-├── .env.example         # Пример .env файла
-├── Makefile             # Команды сборки
-├── Dockerfile           # Docker-образ приложения
-├── docker-compose.yml   # Оркестрация (PostgreSQL + app)
-├── plan.md              # План доведения до релиза (подробный)
-├── CLAUDE.md            # Контекст проекта для AI-ассистентов
-└── README.md            # Эта документация
+main.go              — точка входа
+cli.go               — CLI-команды
+db.go                — работа с базой данных
+scheduler.go         — планировщик отправок
+email_templates.go   — HTML-шаблоны писем
+models.go            — модели данных
+schema.sql           — схема БД
 ```
 
-> **Примечание:** после Фазы 3 (рефакторинг) структура изменится — код будет разбит на пакеты в `cmd/` и `internal/`. См. `plan.md` → Фаза 3.2.
+> После Фазы 3 код переедет в `cmd/` и `internal/` (см. `plan.md`).
 
-## База данных
-
-### Таблицы
-
-- **users**: Хранит информацию о пользователях
-  - id (UUID, primary key)
-  - email (уникальный)
-  - password_hash (пока не используется, будет в Фазе 6)
-  - first_name, last_name
-  - age, gender
-  - height_cm, weight_kg
-  - goal, activity_level
-  - is_active (boolean)
-  - created_at, updated_at
-
-- **user_schedules**: Хранит расписание отправки email
-  - id (SERIAL, primary key)
-  - user_id (UUID, foreign key)
-  - day_of_week (0-6)
-  - time_hour (0-23)
-  - time_minute (0-59)
-  - email_type (morning/afternoon/evening)
-  - is_active (boolean)
-  - created_at, updated_at
-  - UNIQUE(user_id, day_of_week, time_hour, time_minute)
-
-## Логика персонализации
-
-### Тренировки
-
-В зависимости от цели пользователя:
-
-- **weight_loss**: Кардио + базовые упражнения для сжигания калорий
-- **muscle_gain**: Силовые упражнения с большими весами
-- **maintenance**: Балансированная нагрузка
-- **general_fitness**: Универсальная фитнес-тренировка
-
-### Питание
-
-- Рассчитывается на основе уровня активности и возраста
-- Учитывается пол (дополнительные 300 ккал для мужчин)
-- Уменьшение для возраста 30-50 и 50+
-- План питания на завтрак, обед, ужин и перекусы
-
-## Пример работы
-
-### Полный цикл:
-
-```bash
-# 1. Инициализация
-make init-db
-
-# 2. Создать пользователя
-make add-user
-
-# 3. Добавить расписание
-make add-schedule
-
-# 4. Запустить планировщик
-make run-scheduler
-
-# 5. Проверить email в почтовом клиенте в указанное время
-```
-
-### Интерактивный пример:
-
-```bash
-# Открыть терминал для планировщика
-make run-scheduler
-
-# Открыть новый терминал для создания пользователя
-make add-user
-# Ввести данные: test@example.com | Test | User | 25 | male | 180 | 75 | muscle_gain | active
-
-# Открыть еще один терминал для добавления расписания
-make add-schedule
-# Выбрать пользователя и задать расписание
-```
-
-## Docker
-
-Приложение полностью работает в Docker через docker-compose!
-
-### 🚀 Быстрый старт (3 шага)
-
-1. **Создайте .env файл**:
-```bash
-cp .env.example .env
-# Отредактируйте .env и настройте SMTP
-```
-
-2. **Соберите образы**:
-```bash
-make docker-build
-```
-
-3. **Запустите контейнеры**:
-```bash
-make docker-up
-```
-
-### Полный процесс развертывания
-
-#### Шаг 1: Подготовка
-
-Создайте .env файл из примера:
-```bash
-cp .env.example .env
-```
-
-Отредактируйте `.env` с вашими SMTP настройками:
-```env
-SMTP_CONFIG={"Host":"smtp.yandex.ru","Port":465,"User":"your-email@yandex.com","Password":"your-password"}
-EMAIL_CONFIG={"From":"your-email@yandex.com"}
-```
-
-**Для Gmail:** Вам нужен App Password
-1. Google Account → Security → 2-Step Verification
-2. App Passwords → Create new app password
-3. Скопируйте 16-символьный пароль
-
-#### Шаг 2: Сборка и запуск
-
-```bash
-# Собрать Docker образы
-make docker-build
-
-# Запустить контейнеры (PostgreSQL и приложение)
-make docker-up
-```
-
-Контейнеры автоматически запустятся:
-- **postgres** (база данных) - порт 5432
-- **app** (Go приложение) - scheduler запущен
-
-#### Шаг 3: Инициализация базы данных
-
-База данных инициализируется автоматически при старте контейнера. Проверьте статус:
-```bash
-make docker-ps
-```
-
-#### Шаг 4: Создание пользователей
-
-```bash
-make docker-add-user
-```
-
-Вам нужно будет ввести данные пользователя интерактивно:
-```
-Email: user@example.com
-Имя (First Name): John
-Фамилия (Last Name): Doe
-Возраст: 30
-Пол (male/female/other): male
-Рост (cm): 175
-Вес (kg): 75
-Цель: muscle_gain
-Уровень активности: active
-```
-
-#### Шаг 5: (Опционально) Настройка расписания
-
-Добавьте расписание для пользователя:
-```bash
-make docker-shell
-./daily-email-sender add-schedule
-# Выберите пользователя из списка
-# Задайте день недели, время и тип email
-```
-
-### Docker команды
-
-| Команда | Описание |
-|---------|----------|
-| `make docker-build` | Собрать Docker образы |
-| `make docker-up` | Запустить контейнеры |
-| `make docker-down` | Остановить контейнеры |
-| `make docker-restart` | Перезапустить контейнеры |
-| `make docker-logs` | Показать логи в реальном времени |
-| `make docker-ps` | Показать статус контейнеров |
-| `make docker-shell` | Открыть shell в приложении |
-| `make docker-init-db` | Инициализировать базу данных |
-| `make docker-add-user` | Добавить пользователя |
-| `make docker-clean` | Очистить все контейнеры и volumes |
-
-### Просмотр логов
-
-Для мониторинга работы приложения:
-```bash
-make docker-logs
-```
-
-### Внутри контейнеров
-
-#### Войти в приложение:
-```bash
-make docker-shell
-./daily-email-sender --help
-```
-
-#### Войти в PostgreSQL:
-```bash
-docker-compose exec postgres psql -U postgres -d daily_email_sender
-```
-
-### Работа с данными
-
-#### Посмотреть пользователей:
-```bash
-make docker-shell
-./daily-email-sender list-users
-```
-
-#### Создать пользователя через PostgreSQL:
-```bash
-docker-compose exec postgres psql -U postgres -d daily_email_sender
-SELECT * FROM users;
-```
-
-### Troubleshooting
-
-**Контейнеры не запускаются:**
-```bash
-make docker-logs
-make docker-restart
-```
-
-**Ошибка при инициализации БД:**
-```bash
-make docker-shell
-./daily-email-sender init-db
-```
-
-**Не создается пользователь:**
-```bash
-make docker-ps
-make docker-shell
-./daily-email-sender add-user
-```
-
-**Email не отправляется:**
-1. Проверьте SMTP настройки в .env
-2. Убедитесь в правильности пароля
-3. Проверьте логи: `make docker-logs`
-4. Убедитесь, что нет ограничений на отправку (Yandex: ~500 писем/день)
-
-### Структура контейнеров
-
-```
-docker-compose.yml
-├── postgres:15-alpine
-│   ├── База данных PostgreSQL
-│   ├── Автоматическая инициализация схемы
-│   └── Персистентные данные через volumes
-│
-└── app (Go приложение)
-    ├── daily-email-sender.exe
-    ├── Scheduler работает в фоне
-    └── Автоматически проверяет расписание каждую минуту
-```
-
-### Production deployment
-
-Для продакшена:
-1. Настройте .env с реальными данными (не коммитьте .env в репозиторий!)
-2. Запустите: `make docker-build && make docker-up`
-3. Добавьте пользователей и расписание
-4. Для автозапуска используйте systemd или supervisor
-
-## Требования
-
-- **Go** 1.21 или выше (только для локальной разработки без Docker)
-- **Docker** и **Docker Compose** (для запуска в контейнерах)
-- **PostgreSQL** 17+ (или совместимая версия)
-- Пароль от PostgreSQL пользователя (задайте свой, не используйте дефолтный)
-- SMTP доступ к email сервису
-
-**Рекомендуемые провайдеры:**
-- Yandex Mail (бесплатно, ~500 писем/день)
-- Gmail (создайте App Password)
-- Microsoft 365 (создайте специальный аккаунт)
-
-## Troubleshooting
-
-### "database not connected" ошибка
-
-Убедитесь что .env файл создан и содержит правильные креды:
-
-```env
-DATABASE_URL="postgres://postgres:YOUR_PASSWORD@localhost:5432/daily_email_sender?sslmode=disable&client_encoding=UTF-8"
-```
-
-### "cannot determine database owner" ошибка
-
-База данных не создана. Создайте её через pgAdmin или:
-
-```bash
-"C:/Program Files/PostgreSQL/17/bin/psql" -U postgres -c "CREATE DATABASE daily_email_sender;"
-```
-
-### "redeclared in this block" ошибка
-
-Ошибка сборки при наличии test files. Удалите временные файлы:
-
-```bash
-make clean && make build
-```
-
-### Кракозябры при подключении к БД
-
-Добавьте `client_encoding=UTF-8` в DATABASE_URL:
-
-```env
-DATABASE_URL="...?sslmode=disable&client_encoding=UTF-8"
-```
+---
 
 ## Лицензия
 
