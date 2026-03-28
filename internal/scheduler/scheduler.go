@@ -13,6 +13,8 @@ import (
 	"daily-email-sender/internal/email"
 )
 
+const maxConsecutiveErrors = 10
+
 var moscowTZ *time.Location
 
 func init() {
@@ -26,11 +28,12 @@ func init() {
 
 // Scheduler управляет периодической отправкой писем по расписаниям пользователей.
 type Scheduler struct {
-	store    *database.Store
-	sender   *email.Sender
-	interval time.Duration
-	stopChan chan struct{}
-	wg       sync.WaitGroup
+	store             *database.Store
+	sender            *email.Sender
+	interval          time.Duration
+	stopChan          chan struct{}
+	wg                sync.WaitGroup
+	consecutiveErrors int
 }
 
 // New создаёт планировщик.
@@ -91,9 +94,20 @@ func (s *Scheduler) checkAndSendEmails() {
 
 	schedules, err := s.store.GetActiveSchedulesForDay(dayOfWeek)
 	if err != nil {
-		slog.Error("ошибка получения расписаний", "error", err)
+		s.consecutiveErrors++
+		slog.Warn("ошибка получения расписаний, повтор на следующем тике",
+			"error", err,
+			"consecutive_errors", s.consecutiveErrors,
+		)
+		if s.consecutiveErrors > maxConsecutiveErrors {
+			slog.Error("превышен лимит последовательных ошибок, завершение работы",
+				"consecutive_errors", s.consecutiveErrors,
+			)
+			os.Exit(1)
+		}
 		return
 	}
+	s.consecutiveErrors = 0
 
 	for _, sc := range schedules {
 		if sc.TimeHour == currentHour && sc.TimeMinute == currentMinute {

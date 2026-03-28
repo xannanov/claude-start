@@ -3,13 +3,13 @@ package cli
 import (
 	"bufio"
 	"fmt"
-	"net/mail"
 	"os"
 	"strconv"
 	"strings"
 
 	"daily-email-sender/internal/database"
 	"daily-email-sender/internal/models"
+	"daily-email-sender/internal/validation"
 )
 
 // CLI предоставляет интерактивный интерфейс командной строки.
@@ -36,8 +36,8 @@ func (c *CLI) AddUserInteractive() error {
 			fmt.Print("Email (не может быть пустым): ")
 			continue
 		}
-		if _, parseErr := mail.ParseAddress(email); parseErr != nil {
-			fmt.Printf("Некорректный email '%s'. Попробуйте снова: ", email)
+		if err := validation.ValidateEmail(email); err != nil {
+			fmt.Printf("%s. Попробуйте снова: ", err)
 			continue
 		}
 		break

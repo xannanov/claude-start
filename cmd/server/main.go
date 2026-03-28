@@ -104,7 +104,14 @@ func runScheduler() error {
 	}
 
 	slog.Info("подключение к PostgreSQL установлено")
+
 	sender := email.NewSender(cfg.SMTP, cfg.EmailFrom)
+	slog.Info("проверка SMTP-соединения...")
+	if err := sender.CheckConnection(); err != nil {
+		return fmt.Errorf("SMTP недоступен, scheduler не запущен: %w", err)
+	}
+	slog.Info("SMTP-соединение успешно проверено")
+
 	scheduler.Run(store, sender, 1*time.Minute)
 	return nil
 }

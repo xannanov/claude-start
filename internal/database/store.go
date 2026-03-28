@@ -133,7 +133,12 @@ func (s *Store) GetAllUsers() ([]models.User, error) {
 }
 
 // CreateUser создаёт нового пользователя и заполняет ID, CreatedAt, UpdatedAt.
+// Возвращает ошибку "Пользователь с таким email уже существует" если email занят.
 func (s *Store) CreateUser(user *models.User) error {
+	if _, err := s.GetUserByEmail(user.Email); err == nil {
+		return fmt.Errorf("пользователь с email '%s' уже существует", user.Email)
+	}
+
 	query := `
 		INSERT INTO users (
 			email, first_name, last_name, age, gender,

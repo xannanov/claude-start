@@ -58,6 +58,21 @@ func NewSender(smtp config.SMTPConfig, emailFrom string) *Sender {
 	return &Sender{smtp: smtp, emailFrom: emailFrom}
 }
 
+// CheckConnection проверяет доступность SMTP-сервера и правильность учётных данных.
+// Вызывать при старте планировщика.
+func (s *Sender) CheckConnection() error {
+	d := gomail.NewDialer(s.smtp.Host, s.smtp.Port, s.smtp.User, s.smtp.Password)
+	d.SSL = true
+	d.TLSConfig = &tls.Config{ServerName: s.smtp.Host}
+
+	closer, err := d.Dial()
+	if err != nil {
+		return fmt.Errorf("ошибка SMTP-аутентификации (%s:%d): %w", s.smtp.Host, s.smtp.Port, err)
+	}
+	closer.Close()
+	return nil
+}
+
 // Send генерирует HTML-письмо из msg и отправляет на адрес toEmail.
 func (s *Sender) Send(toEmail string, msg models.PersonalizedMessage) error {
 	body, err := renderTemplate(msg)
@@ -155,7 +170,8 @@ func GeneratePersonalizedMessage(user models.User, dayOfWeek int, emailType stri
 	dayName := days[dayOfWeek%7]
 
 	workout := generateWorkoutPlan(user, emailType)
-	nutrition := generateNutritionPlan(user)
+	// Тренировочный день — повышенная норма воды (35 мл/кг вместо 30)
+	nutrition := generateNutritionPlan(user, true)
 
 	return models.PersonalizedMessage{
 		Subject:   greeting,
@@ -248,7 +264,7 @@ func generateGeneralFitnessWorkout() models.WorkoutPlan {
 	}
 }
 
-func generateNutritionPlan(user models.User) models.NutritionPlan {
+func generateNutritionPlan(user models.User, isTrainingDay bool) models.NutritionPlan {
 	var calorieTarget int
 	var proteinPerKg float64
 
@@ -279,7 +295,11 @@ func generateNutritionPlan(user models.User) models.NutritionPlan {
 	}
 
 	proteinTarget := math.Round(proteinPerKg*user.WeightKg*10) / 10
-	waterMl := int(user.WeightKg * 30)
+	waterPerKg := 30.0
+	if isTrainingDay {
+		waterPerKg = 35.0
+	}
+	waterMl := int(user.WeightKg * waterPerKg)
 
 	nutrition := models.NutritionPlan{
 		ProteinGoal:   fmt.Sprintf("%.0f г (%.0f ккал)", proteinTarget, math.Round(proteinTarget*4)),
