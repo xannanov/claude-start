@@ -64,11 +64,11 @@ clean:
 	rm -f daily-email-sender.exe
 	@echo "Clean complete"
 
-# Test compilation
+# Run tests
 test:
-	@echo "Testing compilation..."
-	go build -o /dev/null .
-	@echo "Test passed"
+	@echo "Running tests..."
+	go test ./... -v
+	@echo "Tests complete"
 
 # Initialize database
 init-db:

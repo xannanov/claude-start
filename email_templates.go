@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"math"
 	"time"
 )
@@ -106,7 +107,7 @@ func GenerateNutritionPlan(user User) NutritionPlan {
 	nutrition := NutritionPlan{
 		ProteinGoal:   fmt.Sprintf("%.0f грамм (%.0f ккал)", proteinTarget, math.Round(proteinTarget*4)),
 		CalorieTarget: fmt.Sprintf("%d ккал/день", calorieTarget),
-		WaterIntake:   fmt.Sprintf("%d-2000 мл/день", calorieTarget/5),
+		WaterIntake:   fmt.Sprintf("%d мл/день", int(user.WeightKg*30)),
 	}
 
 	switch user.Goal {
@@ -229,7 +230,7 @@ func generateEmailHTML(user User, dayName, timeOfDay string, workout WorkoutPlan
 				<ul style="list-style-type: circle; margin-left: 20px;">
 					%s</ul>
 				<p><strong>Длительность:</strong> %s</p>
-				<p><strong>Сеты/Повторения:</strong> %s / %s</p>
+				<p><strong>Сеты/Повторения:</strong> %s</p>
 
 				<h3 style="color: #FF9800; margin-top: 30px;">🍎 Питание на сегодня:</h3>
 				<p><strong>Твоя цель:</strong> %s ккал/день</p>
@@ -255,8 +256,8 @@ func generateEmailHTML(user User, dayName, timeOfDay string, workout WorkoutPlan
 		</html>
 	`,
 		timeOfDay,
-		user.FirstName,
-		user.LastName,
+		html.EscapeString(user.FirstName),
+		html.EscapeString(user.LastName),
 		dayName,
 		workout.Title,
 		workout.Description,
@@ -283,8 +284,9 @@ func generateExerciseList(exercises []string) string {
 }
 
 func generateSetsReps(sets, reps []string) string {
+	n := min(len(sets), len(reps))
 	var result string
-	for i := 0; i < len(sets); i++ {
+	for i := 0; i < n; i++ {
 		if i > 0 {
 			result += "<br>"
 		}

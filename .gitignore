@@ -11,9 +11,6 @@
 *.test
 *.out
 
-# Dependencies
-go.sum
-
 # Docker volumes
 postgres_data/
 postgres_data_dev/

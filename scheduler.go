@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
 	"gopkg.in/gomail.v2"
 )
 
@@ -34,7 +33,6 @@ type EmailConfig struct {
 type Message struct {
 	Subject string
 	Body    string
-	Time    string
 }
 
 
@@ -163,27 +161,30 @@ func (s *Scheduler) checkAndSendEmails() {
 	}
 }
 
-// sendEmailForSchedule sends an email for a specific schedule
+// sendEmailForSchedule sends an email for a specific schedule with retry (1s → 5s → 15s).
 func (s *Scheduler) sendEmailForSchedule(schedule UserSchedule) {
-	// Get user
 	user, err := GetUserByID(schedule.UserID)
 	if err != nil {
 		log.Printf("Error getting user for schedule %d: %v", schedule.ID, err)
 		return
 	}
 
-	// Generate personalized message
 	message := GeneratePersonalizedMessage(*user, schedule.DayOfWeek, schedule.EmailType)
 
-	// Send email using SMTP config from .env
-	err = sendEmailFromConfig(message, user.Email)
-	if err != nil {
-		log.Printf("Error sending email to %s: %v", user.Email, err)
-		return
+	retryDelays := []time.Duration{1 * time.Second, 5 * time.Second, 15 * time.Second}
+	for attempt, delay := range retryDelays {
+		err = sendEmailFromConfig(message, user.Email)
+		if err == nil {
+			log.Printf("Email sent to %s at %02d:%02d (%s, %s)", user.Email,
+				schedule.TimeHour, schedule.TimeMinute, message.TimeOfDay, schedule.EmailType)
+			return
+		}
+		log.Printf("SMTP attempt %d failed for %s: %v", attempt+1, user.Email, err)
+		if attempt < len(retryDelays)-1 {
+			time.Sleep(delay)
+		}
 	}
-
-	log.Printf("Email sent to %s at %d:%02d (%s)", user.Email,
-		message.TimeOfDay, schedule.TimeHour, schedule.EmailType)
+	log.Printf("All SMTP attempts failed for %s (schedule %d)", user.Email, schedule.ID)
 }
 
 // getNextRuns returns schedules that will run within the next specified minutes
@@ -298,13 +299,9 @@ func (s *Scheduler) displayNextRuns() {
 	}
 }
 
-// sendEmailFromConfig sends email using SMTP configuration from environment
+// sendEmailFromConfig sends email using SMTP configuration from environment.
+// .env is loaded once at startup via ConnectToDatabase; do NOT reload it here.
 func sendEmailFromConfig(message PersonalizedMessage, toEmail string) error {
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: .env file not found")
-	}
-
 	// Parse SMTP config from env
 	smtpConfigStr := os.Getenv("SMTP_CONFIG")
 	var smtpConfig SMTPConfig
@@ -323,7 +320,6 @@ func sendEmailFromConfig(message PersonalizedMessage, toEmail string) error {
 	return sendEmail(smtpConfig, EmailConfig{From: emailConfig.From, To: toEmail}, Message{
 		Subject: message.Subject,
 		Body:    message.Body,
-		Time:    message.TimeOfDay,
 	})
 }
 
@@ -367,7 +363,7 @@ func sendEmail(smtp SMTPConfig, email EmailConfig, message Message) error {
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
-	log.Printf("Email sent successfully at %s: %s", message.Time, message.Subject)
+	log.Printf("Email sent successfully: %s", message.Subject)
 	return nil
 }
 

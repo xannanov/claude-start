@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"net/mail"
 	"os"
 	"strconv"
 	"strings"
@@ -32,11 +33,16 @@ func (cli *CLI) AddUserInteractive() error {
 	fmt.Print("Email: ")
 	var email string
 	for scanner.Scan() {
-		email = scanner.Text()
-		if strings.TrimSpace(email) != "" {
-			break
+		email = strings.TrimSpace(scanner.Text())
+		if email == "" {
+			fmt.Print("Email (не может быть пустым): ")
+			continue
 		}
-		fmt.Print("Email (не может быть пустым): ")
+		if _, parseErr := mail.ParseAddress(email); parseErr != nil {
+			fmt.Printf("Некорректный email '%s'. Попробуйте снова: ", email)
+			continue
+		}
+		break
 	}
 
 	// First name
@@ -48,39 +54,67 @@ func (cli *CLI) AddUserInteractive() error {
 	lastName := cli.readString(scanner)
 
 	// Age
-	fmt.Print("Возраст: ")
-	age, err := cli.readInt(scanner)
-	if err != nil {
-		return fmt.Errorf("неверный возраст: %w", err)
+	var age int
+	for {
+		fmt.Print("Возраст (13–120): ")
+		var err error
+		age, err = cli.readInt(scanner)
+		if err != nil {
+			fmt.Printf("Неверный возраст: %v. Попробуйте снова.\n", err)
+			continue
+		}
+		if age < 13 || age > 120 {
+			fmt.Printf("Возраст должен быть от 13 до 120. Введено: %d\n", age)
+			continue
+		}
+		break
 	}
 
 	// Gender
 	fmt.Print("Пол (male/female/other): ")
-	gender := cli.readString(scanner)
-	gender = strings.ToLower(gender)
+	gender := strings.ToLower(cli.readString(scanner))
 	for gender != "male" && gender != "female" && gender != "other" {
-		fmt.Printf("Пол должен быть male, female или other. Попробуйте снова: ")
+		fmt.Print("Пол должен быть male, female или other. Попробуйте снова: ")
 		gender = strings.ToLower(cli.readString(scanner))
 	}
 
 	// Height in cm
-	fmt.Print("Рост (cm): ")
-	height, err := cli.readInt(scanner)
-	if err != nil {
-		return fmt.Errorf("неверный рост: %w", err)
+	var height int
+	for {
+		fmt.Print("Рост (100–250 см): ")
+		var err error
+		height, err = cli.readInt(scanner)
+		if err != nil {
+			fmt.Printf("Неверный рост: %v. Попробуйте снова.\n", err)
+			continue
+		}
+		if height < 100 || height > 250 {
+			fmt.Printf("Рост должен быть от 100 до 250 см. Введено: %d\n", height)
+			continue
+		}
+		break
 	}
 
 	// Weight in kg
-	fmt.Print("Вес (kg): ")
-	weight, err := cli.readFloat(scanner)
-	if err != nil {
-		return fmt.Errorf("неверный вес: %w", err)
+	var weight float64
+	for {
+		fmt.Print("Вес (30–300 кг): ")
+		var err error
+		weight, err = cli.readFloat(scanner)
+		if err != nil {
+			fmt.Printf("Неверный вес: %v. Попробуйте снова.\n", err)
+			continue
+		}
+		if weight < 30 || weight > 300 {
+			fmt.Printf("Вес должен быть от 30 до 300 кг. Введено: %.1f\n", weight)
+			continue
+		}
+		break
 	}
 
 	// Goal
 	fmt.Print("Цель (weight_loss/muscle_gain/maintenance/general_fitness): ")
-	goal := cli.readString(scanner)
-	goal = strings.ToLower(goal)
+	goal := strings.ToLower(cli.readString(scanner))
 	validGoals := []string{"weight_loss", "muscle_gain", "maintenance", "general_fitness"}
 	for !contains(validGoals, goal) {
 		fmt.Printf("Цель должна быть одной из: %v. Попробуйте снова: ", validGoals)
@@ -89,17 +123,21 @@ func (cli *CLI) AddUserInteractive() error {
 
 	// Activity level
 	fmt.Print("Уровень активности (sedentary/light/moderate/active/very_active): ")
-	activityLevel := cli.readString(scanner)
-	activityLevel = strings.ToLower(activityLevel)
+	activityLevel := strings.ToLower(cli.readString(scanner))
 	validLevels := []string{"sedentary", "light", "moderate", "active", "very_active"}
 	for !contains(validLevels, activityLevel) {
 		fmt.Printf("Уровень активности должен быть одной из: %v. Попробуйте снова: ", validLevels)
 		activityLevel = strings.ToLower(cli.readString(scanner))
 	}
 
+	// Check for duplicate email
+	if _, err := GetUserByEmail(email); err == nil {
+		return fmt.Errorf("пользователь с email '%s' уже существует", email)
+	}
+
 	// Create user
 	user := &User{
-		Email:         strings.TrimSpace(email),
+		Email:         email,
 		FirstName:     strings.TrimSpace(firstName),
 		LastName:      strings.TrimSpace(lastName),
 		Age:           age,
@@ -226,7 +264,7 @@ func (cli *CLI) AddScheduleInteractive() error {
 	}
 
 	// Select user
-	fmt.Print("\nВыберите пользователя (1-%d): ", len(users))
+	fmt.Printf("\nВыберите пользователя (1-%d): ", len(users))
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		choice, err := strconv.Atoi(scanner.Text())
@@ -241,20 +279,20 @@ func (cli *CLI) AddScheduleInteractive() error {
 
 		fmt.Print("День недели (0-Пн, 1-Вт, 2-Ср, 3-Чт, 4-Пт, 5-Сб, 6-Вс): ")
 		day, err := cli.readInt(scanner)
-		if err != nil {
-			return fmt.Errorf("неверный день: %w", err)
+		if err != nil || day < 0 || day > 6 {
+			return fmt.Errorf("неверный день: ожидается 0–6")
 		}
 
 		fmt.Print("Час (0-23): ")
 		hour, err := cli.readInt(scanner)
-		if err != nil {
-			return fmt.Errorf("неверный час: %w", err)
+		if err != nil || hour < 0 || hour > 23 {
+			return fmt.Errorf("неверный час: ожидается 0–23")
 		}
 
 		fmt.Print("Минута (0-59): ")
 		minute, err := cli.readInt(scanner)
-		if err != nil {
-			return fmt.Errorf("неверная минута: %w", err)
+		if err != nil || minute < 0 || minute > 59 {
+			return fmt.Errorf("неверная минута: ожидается 0–59")
 		}
 
 		fmt.Print("Тип email (morning/afternoon/evening): ")
