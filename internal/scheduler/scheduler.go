@@ -78,10 +78,15 @@ func (s *Scheduler) Stop() {
 	s.wg.Wait()
 }
 
+// GoWeekdayToISO конвертирует Go Weekday (0=Sunday, 1=Monday, ..., 6=Saturday)
+// в ISO формат (0=Monday, 1=Tuesday, ..., 6=Sunday).
+func GoWeekdayToISO(goWeekday time.Weekday) int {
+	return (int(goWeekday) + 6) % 7
+}
+
 func (s *Scheduler) checkAndSendEmails() {
 	now := time.Now().In(moscowTZ)
-	// Go: 0=Sunday → конвертация в 0=Monday
-	dayOfWeek := (int(now.Weekday()) + 6) % 7
+	dayOfWeek := GoWeekdayToISO(now.Weekday())
 	currentHour := now.Hour()
 	currentMinute := now.Minute()
 

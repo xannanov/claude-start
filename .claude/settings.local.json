@@ -6,7 +6,8 @@
       "Bash(mkdir -p c:/Users/Albert/Desktop/AllProjects/claude-start/internal/models)",
       "Bash(mkdir -p c:/Users/Albert/Desktop/AllProjects/claude-start/internal/config)",
       "Bash(mkdir -p c:/Users/Albert/Desktop/AllProjects/claude-start/internal/database)",
-      "Bash(mkdir -p c:/Users/Albert/Desktop/AllProjects/claude-start/internal/email/templates)"
+      "Bash(mkdir -p c:/Users/Albert/Desktop/AllProjects/claude-start/internal/email/templates)",
+      "Bash(go test:*)"
     ]
   }
 }
