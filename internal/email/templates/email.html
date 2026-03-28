@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px;">
+    <div style="background-color: #fff; border-radius: 10px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h1 style="color: #4CAF50;">{{.Greeting}}</h1>
+        <p>Приветствую, {{.FirstName}} {{.LastName}}!</p>
+        <p><strong>Сегодня {{.DayName}}</strong></p>
+
+        <h3 style="color: #2196F3;">🔥 Тренировка на сегодня:</h3>
+        <h4 style="color: #1976D2;">{{.WorkoutTitle}}</h4>
+        <p><em>{{.WorkoutDescription}}</em></p>
+        <ul style="list-style-type: circle; margin-left: 20px;">
+            {{range .Exercises}}<li>{{.Name}} — {{.Sets}} / {{.Reps}}</li>
+            {{end}}
+        </ul>
+        <p><strong>Длительность:</strong> {{.WorkoutDuration}}</p>
+
+        <h3 style="color: #FF9800; margin-top: 30px;">🍎 Питание на сегодня:</h3>
+        <p><strong>Твоя цель:</strong> {{.CalorieTarget}}</p>
+        <p><strong>Белок:</strong> {{.ProteinGoal}}</p>
+        <p><strong>Вода:</strong> {{.WaterIntake}}</p>
+
+        <h4>Завтрак:</h4>
+        <p style="margin-left: 20px;">{{.Breakfast}}</p>
+
+        <h4>Обед:</h4>
+        <p style="margin-left: 20px;">{{.Lunch}}</p>
+
+        <h4>Ужин:</h4>
+        <p style="margin-left: 20px;">{{.Dinner}}</p>
+
+        <h4>Перекусы:</h4>
+        <ul style="list-style-type: circle; margin-left: 20px;">
+            {{range .Snacks}}<li>{{.}}</li>
+            {{end}}
+        </ul>
+
+        <p style="margin-top: 30px; color: #888; font-size: 12px;">Время: {{.SentAt}}</p>
+    </div>
+</body>
+</html>

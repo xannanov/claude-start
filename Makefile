@@ -1,121 +1,109 @@
-.PHONY: all run build test clean init-db run-scheduler deps full-setup help docker-build docker-up docker-down docker-logs docker-ps docker-clean docker-init-db docker-add-user docker-shell docker-restart docker-up-dev
+.PHONY: all run build test clean init-db run-scheduler deps add-user list-users add-schedule full-setup help docker-build docker-up docker-down docker-logs docker-ps docker-clean docker-init-db docker-add-user docker-shell docker-restart docker-up-dev
 
-# All commands
-all: build
-
-# Default goal: show help
+# По умолчанию показываем справку
 .DEFAULT_GOAL := help
 
-# Show help
 help:
 	@echo ""
 	@echo "========================================"
 	@echo "  Daily Email Sender - Makefile Commands"
 	@echo "========================================"
 	@echo ""
-	@echo "  make init-db      - Initialize database"
-	@echo "  make run-scheduler- Start the scheduler"
-	@echo "  make add-user     - Add user interactively"
-	@echo "  make list-users   - Show list of users"
-	@echo "  make add-schedule - Add schedule interactively"
-	@echo "  make full-setup   - Full user creation cycle"
-	@echo "  make build        - Build executable file"
-	@echo "  make run          - Show this help"
-	@echo "  make deps         - Download dependencies"
-	@echo "  make clean        - Clean up (remove binary)"
-	@echo "  make test         - Test compilation"
-	@echo ""
-	@echo "----------------------------------------"
-	@echo "  Go CLI commands (via ./daily-email-sender.exe)"
-	@echo "----------------------------------------"
-	@echo ""
-	@echo "  add-user          - Add a new user"
-	@echo "  list-users        - Show all users"
-	@echo "  add-schedule      - Add schedule for a user"
-	@echo "  run-scheduler     - Start the scheduler"
-	@echo "  init-db           - Initialize database"
-	@echo "  help              - Show this help"
-	@echo ""
-	@echo "----------------------------------------"
-	@echo "  Examples"
-	@echo "----------------------------------------"
-	@echo ""
-	@echo "  make build && make add-user"
-	@echo "  make run-scheduler"
-	@echo "  make list-users"
-	@echo "  make init-db && make add-user && make run-scheduler"
+	@echo "  make init-db       - Инициализировать базу данных"
+	@echo "  make run-scheduler - Запустить планировщик"
+	@echo "  make add-user      - Добавить пользователя через CLI"
+	@echo "  make list-users    - Показать список пользователей"
+	@echo "  make add-schedule  - Добавить расписание через CLI"
+	@echo "  make full-setup    - Полный цикл создания пользователя"
+	@echo "  make build         - Собрать бинарный файл"
+	@echo "  make deps          - Скачать зависимости"
+	@echo "  make test          - Запустить тесты"
+	@echo "  make test-coverage - Тесты с отчётом о покрытии"
+	@echo "  make lint          - Запустить линтер"
+	@echo "  make clean         - Удалить артефакты сборки"
 	@echo ""
 
-# Build executable file
+# Собрать бинарный файл
 build:
-	@echo "Building..."
-	go build -o daily-email-sender.exe .
-	@echo "Build complete: daily-email-sender.exe"
+	@echo "Сборка..."
+	go build -o daily-email-sender.exe ./cmd/server/
+	@echo "Готово: daily-email-sender.exe"
 
-# Download dependencies
+# Скачать зависимости
 deps:
-	@echo "Downloading dependencies..."
+	@echo "Скачивание зависимостей..."
 	go mod download
-	@echo "Dependencies downloaded"
+	@echo "Готово"
 
-# Clean up
+# Удалить артефакты
 clean:
-	@echo "Cleaning..."
+	@echo "Очистка..."
 	rm -f daily-email-sender.exe
-	@echo "Clean complete"
+	@echo "Готово"
 
-# Run tests
+# Запустить тесты
 test:
-	@echo "Running tests..."
+	@echo "Запуск тестов..."
 	go test ./... -v
-	@echo "Tests complete"
+	@echo "Тесты завершены"
 
-# Initialize database
+# Тесты с покрытием
+test-coverage:
+	@echo "Запуск тестов с покрытием..."
+	go test ./... -coverprofile=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Отчёт: coverage.html"
+
+# Линтер
+lint:
+	golangci-lint run ./...
+
+# Инициализировать БД
 init-db:
-	@echo "Initializing database..."
-	go run . init-db
-	@echo "Database initialized"
+	@echo "Инициализация базы данных..."
+	go run ./cmd/server/ init-db
+	@echo "База данных инициализирована"
 
-# Start scheduler
+# Запустить планировщик
 run-scheduler:
-	@echo "Starting scheduler..."
-	go run . run-scheduler
+	@echo "Запуск планировщика..."
+	go run ./cmd/server/ run-scheduler
 
-# Add user interactively
+# Добавить пользователя
 add-user:
-	@echo "Adding user..."
-	go run . add-user
+	@echo "Добавление пользователя..."
+	go run ./cmd/server/ add-user
 
-# Show list of users
+# Показать список пользователей
 list-users:
-	@echo "Listing users..."
-	go run . list-users
+	@echo "Список пользователей..."
+	go run ./cmd/server/ list-users
 
-# Add schedule interactively
+# Добавить расписание
 add-schedule:
-	@echo "Adding schedule..."
-	go run . add-schedule
+	@echo "Добавление расписания..."
+	go run ./cmd/server/ add-schedule
 
-# Full user creation cycle
+# Полный цикл создания
 full-setup:
-	@echo "Running full setup..."
+	@echo "Полная настройка..."
 	$(MAKE) add-user
 
-# Docker targets
+# Docker
 docker-build:
-	@echo "Building Docker images..."
+	@echo "Сборка Docker-образов..."
 	docker-compose build
-	@echo "Build complete!"
+	@echo "Готово!"
 
 docker-up:
-	@echo "Starting Docker containers..."
+	@echo "Запуск контейнеров..."
 	docker-compose up -d
-	@echo "Containers started! PostgreSQL is available at localhost:5432"
+	@echo "Контейнеры запущены! PostgreSQL доступен на localhost:5432"
 
 docker-down:
-	@echo "Stopping Docker containers..."
+	@echo "Остановка контейнеров..."
 	docker-compose down
-	@echo "Containers stopped!"
+	@echo "Контейнеры остановлены!"
 
 docker-logs:
 	docker-compose logs -f
@@ -124,31 +112,28 @@ docker-ps:
 	docker-compose ps
 
 docker-clean:
-	@echo "Cleaning Docker containers and volumes..."
+	@echo "Очистка контейнеров и томов..."
 	docker-compose down -v
-	@echo "Clean complete!"
+	@echo "Готово!"
 
 docker-init-db:
-	@echo "Initializing database inside containers..."
+	@echo "Инициализация БД в контейнере..."
 	docker-compose exec app ./daily-email-sender init-db
-	@echo "Database initialized!"
+	@echo "БД инициализирована!"
 
 docker-add-user:
-	@echo "Adding user..."
+	@echo "Добавление пользователя..."
 	docker-compose exec app ./daily-email-sender add-user
-	@echo "User added!"
 
 docker-shell:
 	docker-compose exec app sh
 
 docker-restart:
-	@echo "Restarting containers..."
+	@echo "Перезапуск контейнеров..."
 	docker-compose restart
-	@echo "Restart complete!"
+	@echo "Готово!"
 
-# Docker development setup
 docker-up-dev:
-	@echo "Starting Docker containers in development mode..."
+	@echo "Запуск в режиме разработки..."
 	docker-compose -f docker-compose.dev.yml up -d
-	@echo "Containers started in development mode!"
-	@echo "To initialize and add user, run: make docker-dev-setup"
+	@echo "Контейнеры запущены в dev-режиме!"
