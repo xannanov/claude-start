@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"time"
+	_ "time/tzdata" // встраивает timezone DB в бинарник (нужно для Alpine/Docker без tzdata)
 
 	"daily-email-sender/internal/cli"
 	"daily-email-sender/internal/config"

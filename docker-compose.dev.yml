@@ -23,9 +23,7 @@ services:
       - app-network-dev
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: alpine:3.19
     container_name: daily-email-app-dev
     restart: unless-stopped
     depends_on:
@@ -34,12 +32,13 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:admin@postgres:5432/daily_email_sender?sslmode=disable&client_encoding=UTF-8
       SMTP_CONFIG: '{"Host":"smtp.yandex.ru","Port":465,"User":"your-email@yandex.com","Password":"your-password"}'
-      EMAIL_CONFIG: '{"From":"sender@example.com","To":"recipient@example.com"}'
+      EMAIL_CONFIG: '{"From":"your-email@yandex.com"}'
+      TZ: Europe/Moscow
     volumes:
-      - .:/app
+      - ./daily-email-sender-linux:/app/daily-email-sender:ro
     networks:
       - app-network-dev
-    command: go run . run-scheduler
+    command: /app/daily-email-sender run-scheduler
 
 volumes:
   postgres_data_dev:

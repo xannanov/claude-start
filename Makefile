@@ -1,4 +1,4 @@
-.PHONY: all run build test clean init-db run-scheduler deps add-user list-users add-schedule full-setup help docker-build docker-up docker-down docker-logs docker-ps docker-clean docker-init-db docker-add-user docker-shell docker-restart docker-up-dev
+.PHONY: all run build build-linux test clean init-db run-scheduler deps add-user list-users add-schedule full-setup help docker-build docker-up docker-down docker-logs docker-ps docker-clean docker-init-db docker-add-user docker-shell docker-restart docker-up-dev
 
 # По умолчанию показываем справку
 .DEFAULT_GOAL := help
@@ -15,7 +15,8 @@ help:
 	@echo "  make list-users    - Показать список пользователей"
 	@echo "  make add-schedule  - Добавить расписание через CLI"
 	@echo "  make full-setup    - Полный цикл создания пользователя"
-	@echo "  make build         - Собрать бинарный файл"
+	@echo "  make build         - Собрать бинарный файл (Windows)"
+	@echo "  make build-linux   - Собрать Linux-бинарник для Docker"
 	@echo "  make deps          - Скачать зависимости"
 	@echo "  make test          - Запустить тесты"
 	@echo "  make test-coverage - Тесты с отчётом о покрытии"
@@ -23,11 +24,17 @@ help:
 	@echo "  make clean         - Удалить артефакты сборки"
 	@echo ""
 
-# Собрать бинарный файл
+# Собрать бинарный файл (Windows)
 build:
 	@echo "Сборка..."
 	go build -o daily-email-sender.exe ./cmd/server/
 	@echo "Готово: daily-email-sender.exe"
+
+# Собрать Linux-бинарник для Docker dev
+build-linux:
+	@echo "Сборка для Linux..."
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o daily-email-sender-linux ./cmd/server/
+	@echo "Готово: daily-email-sender-linux"
 
 # Скачать зависимости
 deps:
@@ -38,7 +45,7 @@ deps:
 # Удалить артефакты
 clean:
 	@echo "Очистка..."
-	rm -f daily-email-sender.exe
+	rm -f daily-email-sender.exe daily-email-sender-linux
 	@echo "Готово"
 
 # Запустить тесты
