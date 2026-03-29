@@ -1,0 +1,11 @@
+{{define "title"}}Отписка{{end}}
+{{define "content"}}
+<article>
+    <header><h1>Отписка от рассылки</h1></header>
+
+    {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
+    {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
+
+    <p><a href="/login">Войти в аккаунт</a></p>
+</article>
+{{end}}

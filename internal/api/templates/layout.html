@@ -1,0 +1,20 @@
+{{define "layout"}}<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{template "title" .}} — FitMail</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .honeypot { display: none !important; }
+        .alert-error { color: var(--pico-del-color); background: var(--pico-del-color-bg); padding: 1rem; border-radius: var(--pico-border-radius); margin-bottom: 1rem; }
+        .alert-success { color: var(--pico-ins-color); background: var(--pico-ins-color-bg); padding: 1rem; border-radius: var(--pico-border-radius); margin-bottom: 1rem; }
+        nav { margin-bottom: 2rem; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        {{template "content" .}}
+    </main>
+</body>
+</html>{{end}}

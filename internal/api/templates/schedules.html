@@ -1,0 +1,67 @@
+{{define "title"}}Управление расписанием{{end}}
+{{define "content"}}
+<nav>
+    <ul><li><strong>FitMail</strong></li></ul>
+    <ul>
+        <li><a href="/dashboard">Кабинет</a></li>
+        <li><a href="/schedules">Расписание</a></li>
+        <li><a href="/profile/edit">Профиль</a></li>
+        <li><form method="POST" action="/logout" style="margin:0"><button type="submit" class="outline secondary" style="margin:0;padding:0.25rem 0.75rem">Выйти</button></form></li>
+    </ul>
+</nav>
+
+<article>
+    <header><h1>Управление расписанием</h1></header>
+
+    {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
+    {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
+
+    {{with .Schedules}}
+    <table>
+        <thead><tr><th>День</th><th>Время</th><th>Тип</th><th></th></tr></thead>
+        <tbody>
+            {{range .}}
+            <tr>
+                <td>{{dayName .DayOfWeek}}</td>
+                <td>{{printf "%02d:%02d" .TimeHour .TimeMinute}}</td>
+                <td>{{.EmailType}}</td>
+                <td>
+                    <form method="POST" action="/schedules/{{.ID}}/delete" style="margin:0">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                        <button type="submit" class="outline secondary" style="margin:0;padding:0.25rem 0.5rem">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p>Нет активных расписаний. Добавьте первое!</p>
+    {{end}}
+</article>
+
+<article>
+    <header><h3>Добавить расписание</h3></header>
+    <form method="POST" action="/schedules/add">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <div class="grid">
+            <label>День недели
+                <select name="day_of_week" required>
+                    {{range $key, $name := .DayNames}}
+                    <option value="{{$key}}">{{$name}}</option>
+                    {{end}}
+                </select>
+            </label>
+            <label>Час
+                <input type="number" name="time_hour" min="0" max="23" value="8" required>
+            </label>
+            <label>Минута
+                <input type="number" name="time_minute" min="0" max="59" value="0" required>
+            </label>
+        </div>
+        <button type="submit">Добавить</button>
+    </form>
+</article>
+
+<p><a href="/dashboard">Вернуться в кабинет</a></p>
+{{end}}
