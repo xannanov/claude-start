@@ -129,9 +129,9 @@ func initDatabase() error {
 	}
 	defer store.Close()
 
-	schema, err := os.ReadFile("schema.sql")
+	schema, err := os.ReadFile("migrations/schema.sql")
 	if err != nil {
-		return fmt.Errorf("ошибка чтения schema.sql: %w", err)
+		return fmt.Errorf("ошибка чтения migrations/schema.sql: %w", err)
 	}
 	if err := store.ExecRaw(string(schema)); err != nil {
 		return fmt.Errorf("ошибка выполнения схемы: %w", err)

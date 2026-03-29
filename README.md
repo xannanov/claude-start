@@ -2,7 +2,7 @@
 
 Go-приложение для отправки персонализированных мотивационных писем с тренировками и питанием. Пользователь регистрируется, задаёт расписание — и получает уникальные письма с AI-сгенерированным контентом.
 
-**Статус:** Фазы 1–2 выполнены. Текущая — Фаза 3 (рефакторинг архитектуры). Полный план: `plan.md`.
+**Статус:** Фазы 1–2 выполнены. Текущая — Фаза 3 (рефакторинг архитектуры). Полный план: `docs/plan.md`.
 
 ---
 
@@ -19,9 +19,9 @@ Go-приложение для отправки персонализирован
 ```bash
 cp .env.example .env
 # Отредактируйте .env: DATABASE_URL, SMTP_CONFIG
-make deps
-make init-db
-make build
+go mod download
+go run ./cmd/server/ init-db
+go build -o server ./cmd/server/
 ```
 
 ### Пример .env
@@ -37,46 +37,22 @@ DATABASE_URL="postgres://postgres:PASSWORD@localhost:5432/daily_email_sender?ssl
 ## Использование
 
 ```bash
-make add-user        # Добавить пользователя
-make list-users      # Список пользователей
-make add-schedule    # Задать расписание отправки
-make run-scheduler   # Запустить планировщик
+go run ./cmd/server/ add-user        # Добавить пользователя
+go run ./cmd/server/ list-users      # Список пользователей
+go run ./cmd/server/ add-schedule    # Задать расписание отправки
+go run ./cmd/server/ run-scheduler   # Запустить планировщик
 ```
-
----
-
-## Docker
-
-```bash
-cp .env.example .env   # Настройте SMTP
-make docker-build
-make docker-up
-make docker-add-user
-```
-
-| Команда | Описание |
-|---------|----------|
-| `make docker-up` | Запустить контейнеры |
-| `make docker-down` | Остановить |
-| `make docker-logs` | Логи в реальном времени |
-| `make docker-shell` | Shell в контейнере приложения |
-| `make docker-clean` | Удалить контейнеры и volumes |
 
 ---
 
 ## Структура проекта
 
 ```
-main.go              — точка входа
-cli.go               — CLI-команды
-db.go                — работа с базой данных
-scheduler.go         — планировщик отправок
-email_templates.go   — HTML-шаблоны писем
-models.go            — модели данных
-schema.sql           — схема БД
+cmd/server/          — точка входа
+internal/            — бизнес-логика
+migrations/          — схема БД
+docs/                — план разработки
 ```
-
-> После Фазы 3 код переедет в `cmd/` и `internal/` (см. `plan.md`).
 
 ---
 
