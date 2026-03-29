@@ -155,6 +155,30 @@ func TestValidateHour(t *testing.T) {
 	}
 }
 
+func TestValidatePassword(t *testing.T) {
+	tests := []struct {
+		name     string
+		password string
+		wantErr  bool
+	}{
+		{"valid 6 chars", "abc123", false},
+		{"valid long", "very_secure_password_2024!", false},
+		{"valid unicode", "пароль", false},
+		{"too short 5", "abc12", true},
+		{"too short 1", "a", true},
+		{"empty", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidatePassword(tt.password)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidatePassword(%q) error = %v, wantErr %v", tt.password, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateMinute(t *testing.T) {
 	tests := []struct {
 		name    string

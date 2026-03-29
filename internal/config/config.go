@@ -1,18 +1,23 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/joho/godotenv"
 )
 
-// Config содержит все настройки приложения
+// Config содержит все настройки приложения.
 type Config struct {
 	DatabaseURL string
 	SMTP        SMTPConfig
 	EmailFrom   string
+	ServerPort  string // порт HTTP-сервера (по умолчанию 8080)
+	SecretKey   []byte // ключ для подписи токенов (HMAC)
 }
 
 // SMTPConfig содержит параметры SMTP-сервера
@@ -62,11 +67,45 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("EMAIL_CONFIG.From не задан")
 	}
 
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	secretKey, err := loadSecretKey()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		DatabaseURL: dbURL,
 		SMTP:        smtp,
 		EmailFrom:   emailCfg.From,
+		ServerPort:  port,
+		SecretKey:   secretKey,
 	}, nil
+}
+
+// loadSecretKey загружает SECRET_KEY из окружения или генерирует случайный.
+func loadSecretKey() ([]byte, error) {
+	keyHex := os.Getenv("SECRET_KEY")
+	if keyHex != "" {
+		key, err := hex.DecodeString(keyHex)
+		if err != nil {
+			return nil, fmt.Errorf("SECRET_KEY должен быть hex-строкой: %w", err)
+		}
+		if len(key) < 32 {
+			return nil, fmt.Errorf("SECRET_KEY должен быть минимум 32 байта (64 hex-символа)")
+		}
+		return key, nil
+	}
+
+	slog.Warn("SECRET_KEY не задан — сгенерирован случайный (токены отписки не переживут перезапуск)")
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		return nil, fmt.Errorf("ошибка генерации SECRET_KEY: %w", err)
+	}
+	return key, nil
 }
 
 // LoadForCLI загружает только DATABASE_URL для CLI-команд (без SMTP).

@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -153,17 +154,23 @@ func (s *Scheduler) sendEmailForSchedule(id int, userID string, dayOfWeek, hour,
 	slog.Error("все попытки SMTP исчерпаны", "email", user.Email, "schedule_id", id)
 }
 
-// Run запускает планировщик, ждёт сигнала завершения, затем останавливает.
-func Run(store *database.Store, sender *email.Sender, interval time.Duration) {
+// Run запускает планировщик и ждёт завершения через контекст или системный сигнал.
+// Если ctx == context.Background(), ожидает SIGINT/SIGTERM (автономный режим).
+func Run(store *database.Store, sender *email.Sender, interval time.Duration, ctx context.Context) {
 	s := New(store, sender, interval)
 	s.Start()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
 
-	slog.Info("получен сигнал завершения")
+	select {
+	case <-sigChan:
+		slog.Info("получен сигнал завершения")
+	case <-ctx.Done():
+		slog.Info("планировщик получил команду остановки")
+	}
+
+	signal.Stop(sigChan)
 	s.Stop()
-	store.Close()
-	slog.Info("приложение завершено")
+	slog.Info("планировщик завершён")
 }

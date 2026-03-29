@@ -1,0 +1,26 @@
+{{define "title"}}Вход{{end}}
+{{define "content"}}
+<article>
+    <header><h1>Вход</h1></header>
+
+    {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
+    {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
+
+    <form method="POST" action="/login">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <div class="honeypot"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+
+        <label>Email
+            <input type="email" name="email" required autofocus>
+        </label>
+
+        <label>Пароль
+            <input type="password" name="password" required>
+        </label>
+
+        <button type="submit">Войти</button>
+    </form>
+
+    <p>Нет аккаунта? <a href="/register">Зарегистрироваться</a></p>
+</article>
+{{end}}

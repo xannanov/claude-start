@@ -1,0 +1,57 @@
+{{define "title"}}Личный кабинет{{end}}
+{{define "content"}}
+<nav>
+    <ul><li><strong>FitMail</strong></li></ul>
+    <ul>
+        <li><a href="/dashboard">Кабинет</a></li>
+        <li><a href="/schedules">Расписание</a></li>
+        <li><a href="/profile/edit">Профиль</a></li>
+        <li><form method="POST" action="/logout" style="margin:0"><button type="submit" class="outline secondary" style="margin:0;padding:0.25rem 0.75rem">Выйти</button></form></li>
+    </ul>
+</nav>
+
+{{with .User}}
+<article>
+    <header><h1>Личный кабинет</h1></header>
+
+    <div class="grid">
+        <div>
+            <hgroup>
+                <h3>{{.FirstName}} {{.LastName}}</h3>
+                <p>{{.Email}}</p>
+            </hgroup>
+            <table>
+                <tr><td>Возраст</td><td>{{.Age}} лет</td></tr>
+                <tr><td>Пол</td><td>{{if eq .Gender "male"}}Мужской{{else if eq .Gender "female"}}Женский{{else}}Другой{{end}}</td></tr>
+                <tr><td>Рост</td><td>{{.HeightCm}} см</td></tr>
+                <tr><td>Вес</td><td>{{.WeightKg}} кг</td></tr>
+                <tr><td>Цель</td><td>{{index $.GoalNames .Goal}}</td></tr>
+                <tr><td>Активность</td><td>{{index $.ActivityNames .ActivityLevel}}</td></tr>
+            </table>
+            <a href="/profile/edit" role="button" class="outline">Редактировать профиль</a>
+        </div>
+    </div>
+</article>
+{{end}}
+
+<article>
+    <header><h3>Расписание рассылки</h3></header>
+    {{with .Schedules}}
+        <table>
+            <thead><tr><th>День</th><th>Время</th><th>Тип</th></tr></thead>
+            <tbody>
+                {{range .}}
+                <tr>
+                    <td>{{dayName .DayOfWeek}}</td>
+                    <td>{{printf "%02d:%02d" .TimeHour .TimeMinute}}</td>
+                    <td>{{.EmailType}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    {{else}}
+        <p>Нет активных расписаний.</p>
+    {{end}}
+    <a href="/schedules" role="button" class="outline">Управление расписанием</a>
+</article>
+{{end}}

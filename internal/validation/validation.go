@@ -56,6 +56,14 @@ func ValidateHour(hour int) error {
 	return nil
 }
 
+// ValidatePassword проверяет пароль (минимум 6 символов).
+func ValidatePassword(password string) error {
+	if len(password) < 6 {
+		return fmt.Errorf("пароль должен содержать минимум 6 символов")
+	}
+	return nil
+}
+
 // ValidateMinute проверяет минуту (0–59).
 func ValidateMinute(minute int) error {
 	if minute < 0 || minute > 59 {

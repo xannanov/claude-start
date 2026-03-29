@@ -135,27 +135,77 @@ func (s *Store) GetAllUsers() ([]models.User, error) {
 // CreateUser создаёт нового пользователя и заполняет ID, CreatedAt, UpdatedAt.
 // Возвращает ошибку "Пользователь с таким email уже существует" если email занят.
 func (s *Store) CreateUser(user *models.User) error {
+	return s.CreateUserWithPassword(user, "")
+}
+
+// CreateUserWithPassword создаёт пользователя с хешем пароля.
+// Если passwordHash пустой — поле password_hash будет NULL.
+func (s *Store) CreateUserWithPassword(user *models.User, passwordHash string) error {
 	if _, err := s.GetUserByEmail(user.Email); err == nil {
 		return fmt.Errorf("пользователь с email '%s' уже существует", user.Email)
 	}
 
 	query := `
 		INSERT INTO users (
-			email, first_name, last_name, age, gender,
+			email, password_hash, first_name, last_name, age, gender,
 			height_cm, weight_kg, goal, activity_level, is_active
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, created_at, updated_at
 	`
 
 	err := s.db.QueryRow(
 		query,
-		user.Email, user.FirstName, user.LastName, user.Age, user.Gender,
+		user.Email, passwordHash, user.FirstName, user.LastName, user.Age, user.Gender,
 		user.HeightCm, user.WeightKg, user.Goal, user.ActivityLevel, true,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
 		return fmt.Errorf("ошибка создания пользователя: %w", err)
 	}
+	return nil
+}
+
+// GetPasswordHashByEmail возвращает ID и хеш пароля активного пользователя по email.
+// Используется для аутентификации при логине.
+func (s *Store) GetPasswordHashByEmail(email string) (string, string, error) {
+	query := `
+		SELECT id, COALESCE(password_hash, '')
+		FROM users
+		WHERE email = $1 AND is_active = true
+	`
+
+	var userID, hash string
+	err := s.db.QueryRow(query, email).Scan(&userID, &hash)
+	if err == sql.ErrNoRows {
+		return "", "", fmt.Errorf("пользователь не найден")
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("ошибка запроса пользователя: %w", err)
+	}
+
+	return userID, hash, nil
+}
+
+// UpdatePasswordHash обновляет хеш пароля пользователя.
+func (s *Store) UpdatePasswordHash(userID, passwordHash string) error {
+	query := `
+		UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2 AND is_active = true
+	`
+
+	result, err := s.db.Exec(query, passwordHash, userID)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления пароля: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("ошибка проверки обновления: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("пользователь не найден")
+	}
+
 	return nil
 }
 
@@ -212,4 +262,154 @@ func (s *Store) GetActiveSchedulesForDay(dayOfWeek int) ([]models.UserSchedule, 
 	}
 
 	return schedules, nil
+}
+
+// UpdateUser обновляет профиль пользователя (без email и пароля).
+func (s *Store) UpdateUser(user *models.User) error {
+	query := `
+		UPDATE users SET
+			first_name = $1, last_name = $2, age = $3, gender = $4,
+			height_cm = $5, weight_kg = $6, goal = $7, activity_level = $8,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $9 AND is_active = true
+	`
+
+	result, err := s.db.Exec(query,
+		user.FirstName, user.LastName, user.Age, user.Gender,
+		user.HeightCm, user.WeightKg, user.Goal, user.ActivityLevel,
+		user.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления пользователя: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("ошибка проверки обновления: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("пользователь не найден")
+	}
+	return nil
+}
+
+// GetSchedulesByUserID возвращает все активные расписания пользователя.
+func (s *Store) GetSchedulesByUserID(userID string) ([]models.UserSchedule, error) {
+	query := `
+		SELECT id, user_id, day_of_week, time_hour, time_minute, email_type, is_active
+		FROM user_schedules
+		WHERE user_id = $1 AND is_active = true
+		ORDER BY day_of_week, time_hour, time_minute
+	`
+
+	rows, err := s.db.Query(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка запроса расписаний: %w", err)
+	}
+	defer rows.Close()
+
+	var schedules []models.UserSchedule
+	for rows.Next() {
+		var sc models.UserSchedule
+		if err := rows.Scan(&sc.ID, &sc.UserID, &sc.DayOfWeek,
+			&sc.TimeHour, &sc.TimeMinute, &sc.EmailType, &sc.IsActive); err != nil {
+			return nil, fmt.Errorf("ошибка чтения расписания: %w", err)
+		}
+		schedules = append(schedules, sc)
+	}
+	return schedules, rows.Err()
+}
+
+// GetScheduleByID возвращает расписание по ID.
+func (s *Store) GetScheduleByID(id int) (*models.UserSchedule, error) {
+	query := `
+		SELECT id, user_id, day_of_week, time_hour, time_minute, email_type, is_active
+		FROM user_schedules
+		WHERE id = $1
+	`
+
+	sc := &models.UserSchedule{}
+	err := s.db.QueryRow(query, id).Scan(
+		&sc.ID, &sc.UserID, &sc.DayOfWeek,
+		&sc.TimeHour, &sc.TimeMinute, &sc.EmailType, &sc.IsActive,
+	)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("расписание не найдено")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ошибка запроса расписания: %w", err)
+	}
+	return sc, nil
+}
+
+// UpdateSchedule обновляет расписание с проверкой владельца.
+func (s *Store) UpdateSchedule(schedule *models.UserSchedule) error {
+	query := `
+		UPDATE user_schedules SET
+			day_of_week = $1, time_hour = $2, time_minute = $3,
+			email_type = $4, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $5 AND user_id = $6 AND is_active = true
+	`
+
+	result, err := s.db.Exec(query,
+		schedule.DayOfWeek, schedule.TimeHour, schedule.TimeMinute,
+		schedule.EmailType, schedule.ID, schedule.UserID,
+	)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления расписания: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("ошибка проверки обновления: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("расписание не найдено или нет доступа")
+	}
+	return nil
+}
+
+// DeleteSchedule деактивирует расписание с проверкой владельца.
+func (s *Store) DeleteSchedule(scheduleID int, userID string) error {
+	query := `
+		UPDATE user_schedules SET is_active = false, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1 AND user_id = $2 AND is_active = true
+	`
+
+	result, err := s.db.Exec(query, scheduleID, userID)
+	if err != nil {
+		return fmt.Errorf("ошибка удаления расписания: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("ошибка проверки удаления: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("расписание не найдено или нет доступа")
+	}
+	return nil
+}
+
+// DeactivateScheduleByID деактивирует расписание по ID (для отписки из письма).
+func (s *Store) DeactivateScheduleByID(scheduleID int) error {
+	query := `
+		UPDATE user_schedules SET is_active = false, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1 AND is_active = true
+	`
+
+	result, err := s.db.Exec(query, scheduleID)
+	if err != nil {
+		return fmt.Errorf("ошибка деактивации расписания: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("ошибка проверки деактивации: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("расписание не найдено или уже деактивировано")
+	}
+	return nil
+}
+
+// Ping проверяет доступность базы данных.
+func (s *Store) Ping() error {
+	return s.db.Ping()
 }

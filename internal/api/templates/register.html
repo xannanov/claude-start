@@ -1,0 +1,77 @@
+{{define "title"}}Регистрация{{end}}
+{{define "content"}}
+<article>
+    <header><h1>Регистрация</h1></header>
+
+    {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
+    {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
+
+    <form method="POST" action="/register">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <div class="honeypot"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+
+        <div class="grid">
+            <label>Email
+                <input type="email" name="email" value="{{index .Form "email"}}" required>
+            </label>
+            <label>Пароль (мин. 6 символов)
+                <input type="password" name="password" minlength="6" required>
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>Имя
+                <input type="text" name="first_name" value="{{index .Form "first_name"}}" required>
+            </label>
+            <label>Фамилия
+                <input type="text" name="last_name" value="{{index .Form "last_name"}}" required>
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>Возраст
+                <input type="number" name="age" min="13" max="120" value="{{index .Form "age"}}" required>
+            </label>
+            <label>Пол
+                <select name="gender" required>
+                    <option value="">Выберите...</option>
+                    <option value="male" {{if eq (index .Form "gender") "male"}}selected{{end}}>Мужской</option>
+                    <option value="female" {{if eq (index .Form "gender") "female"}}selected{{end}}>Женский</option>
+                    <option value="other" {{if eq (index .Form "gender") "other"}}selected{{end}}>Другой</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>Рост (см)
+                <input type="number" name="height_cm" min="100" max="250" value="{{index .Form "height_cm"}}" required>
+            </label>
+            <label>Вес (кг)
+                <input type="number" name="weight_kg" min="30" max="300" step="0.1" value="{{index .Form "weight_kg"}}" required>
+            </label>
+        </div>
+
+        <label>Цель
+            <select name="goal" required>
+                <option value="">Выберите...</option>
+                {{range $key, $name := .GoalNames}}
+                <option value="{{$key}}" {{if eq (index $.Form "goal") $key}}selected{{end}}>{{$name}}</option>
+                {{end}}
+            </select>
+        </label>
+
+        <label>Уровень активности
+            <select name="activity_level" required>
+                <option value="">Выберите...</option>
+                {{range $key, $name := .ActivityNames}}
+                <option value="{{$key}}" {{if eq (index $.Form "activity_level") $key}}selected{{end}}>{{$name}}</option>
+                {{end}}
+            </select>
+        </label>
+
+        <button type="submit">Зарегистрироваться</button>
+    </form>
+
+    <p>Уже есть аккаунт? <a href="/login">Войти</a></p>
+</article>
+{{end}}
