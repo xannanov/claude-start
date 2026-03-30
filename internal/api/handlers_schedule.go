@@ -68,7 +68,18 @@ func (s *Server) handleScheduleAdd(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.store.CreateUserSchedule(schedule); err != nil {
 		slog.Error("ошибка создания расписания", "error", err)
-		http.Redirect(w, r, "/schedules?error=Ошибка+создания+расписания", http.StatusSeeOther)
+		msg := "Ошибка создания расписания"
+		if err.Error() == "Расписание на этот день и время уже существует" {
+			msg = err.Error()
+		}
+		schedules, _ := s.store.GetSchedulesByUserID(userID)
+		token, _ := GenerateCSRFToken(w)
+		s.render(w, "schedules", PageData{
+			Title:     "Управление расписанием",
+			Error:     msg,
+			Schedules: schedules,
+			CSRFToken: token,
+		})
 		return
 	}
 

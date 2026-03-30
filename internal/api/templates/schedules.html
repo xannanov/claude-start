@@ -1,67 +1,58 @@
 {{define "title"}}Управление расписанием{{end}}
 {{define "content"}}
-<nav>
-    <ul><li><strong>FitMail</strong></li></ul>
-    <ul>
-        <li><a href="/dashboard">Кабинет</a></li>
-        <li><a href="/schedules">Расписание</a></li>
-        <li><a href="/profile/edit">Профиль</a></li>
-        <li><form method="POST" action="/logout" style="margin:0"><button type="submit" class="outline secondary" style="margin:0;padding:0.25rem 0.75rem">Выйти</button></form></li>
-    </ul>
-</nav>
+{{template "nav" .}}
 
-<article>
-    <header><h1>Управление расписанием</h1></header>
-
+<div class="page">
     {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
     {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
 
-    {{with .Schedules}}
-    <table>
-        <thead><tr><th>День</th><th>Время</th><th>Тип</th><th></th></tr></thead>
-        <tbody>
+    <div class="section">
+        <div class="section-title">Ваши расписания</div>
+
+        {{with .Schedules}}
             {{range .}}
-            <tr>
-                <td>{{dayName .DayOfWeek}}</td>
-                <td>{{printf "%02d:%02d" .TimeHour .TimeMinute}}</td>
-                <td>{{.EmailType}}</td>
-                <td>
-                    <form method="POST" action="/schedules/{{.ID}}/delete" style="margin:0">
-                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                        <button type="submit" class="outline secondary" style="margin:0;padding:0.25rem 0.5rem">Удалить</button>
-                    </form>
-                </td>
-            </tr>
+            <div class="sched-row">
+                <div class="sched-left">
+                    <span class="sched-day">{{dayName .DayOfWeek}}</span>
+                    <span class="sched-time">{{printf "%02d:%02d" .TimeHour .TimeMinute}}</span>
+                    <span class="sched-type">{{.EmailType}}</span>
+                </div>
+                <form method="POST" action="/schedules/{{.ID}}/delete" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                    <button type="submit" class="btn-danger">Удалить</button>
+                </form>
+            </div>
             {{end}}
-        </tbody>
-    </table>
-    {{else}}
-    <p>Нет активных расписаний. Добавьте первое!</p>
-    {{end}}
-</article>
+        {{else}}
+            <p style="color:var(--muted); text-align:center; padding:1.5rem 0; margin:0;">
+                😴 Расписаний нет — значит, и тренировок нет. Логично.
+            </p>
+        {{end}}
+    </div>
 
-<article>
-    <header><h3>Добавить расписание</h3></header>
-    <form method="POST" action="/schedules/add">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <div class="grid">
-            <label>День недели
-                <select name="day_of_week" required>
-                    {{range $key, $name := .DayNames}}
-                    <option value="{{$key}}">{{$name}}</option>
-                    {{end}}
-                </select>
-            </label>
-            <label>Час
-                <input type="number" name="time_hour" min="0" max="23" value="8" required>
-            </label>
-            <label>Минута
-                <input type="number" name="time_minute" min="0" max="59" value="0" required>
-            </label>
-        </div>
-        <button type="submit">Добавить</button>
-    </form>
-</article>
+    <div class="section">
+        <div class="section-title">Добавить расписание <span style="font-weight:400; color:var(--muted); font-size:0.85rem;">— отступать некуда</span></div>
+        <form method="POST" action="/schedules/add">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <div class="grid">
+                <label>День недели
+                    <select name="day_of_week" required>
+                        {{range $key, $name := .DayNames}}
+                        <option value="{{$key}}">{{$name}}</option>
+                        {{end}}
+                    </select>
+                </label>
+                <label>Час (0–23)
+                    <input type="number" name="time_hour" min="0" max="23" value="8" required>
+                </label>
+                <label>Минута (0–59)
+                    <input type="number" name="time_minute" min="0" max="59" value="0" required>
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">Добавить 📅</button>
+        </form>
+    </div>
 
-<p><a href="/dashboard">Вернуться в кабинет</a></p>
+    <a href="/dashboard" class="subtle">&larr; Вернуться в кабинет</a>
+</div>
 {{end}}

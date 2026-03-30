@@ -1,76 +1,54 @@
 {{define "title"}}Редактирование профиля{{end}}
 {{define "content"}}
-<nav>
-    <ul><li><strong>FitMail</strong></li></ul>
-    <ul>
-        <li><a href="/dashboard">Кабинет</a></li>
-        <li><a href="/schedules">Расписание</a></li>
-        <li><a href="/profile/edit">Профиль</a></li>
-        <li><form method="POST" action="/logout" style="margin:0"><button type="submit" class="outline secondary" style="margin:0;padding:0.25rem 0.75rem">Выйти</button></form></li>
-    </ul>
-</nav>
+{{template "nav" .}}
 
-<article>
-    <header><h1>Редактирование профиля</h1></header>
+<div class="page page-medium">
+    <div class="section">
+        <div class="section-title" style="margin-bottom:1.25rem;">Редактирование профиля <span style="font-weight:400; color:var(--muted); font-size:0.85rem;">— только правда</span></div>
 
-    {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
-    {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
+        {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
+        {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
 
-    {{with .User}}
-    <form method="POST" action="/profile/edit">
-        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        {{with .User}}
+        <form method="POST" action="/profile/edit">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
 
-        <div class="grid">
-            <label>Имя
-                <input type="text" name="first_name" value="{{.FirstName}}" required>
-            </label>
-            <label>Фамилия
-                <input type="text" name="last_name" value="{{.LastName}}" required>
-            </label>
-        </div>
-
-        <div class="grid">
-            <label>Возраст
-                <input type="number" name="age" min="13" max="120" value="{{.Age}}" required>
-            </label>
-            <label>Пол
-                <select name="gender" required>
-                    <option value="male" {{if eq .Gender "male"}}selected{{end}}>Мужской</option>
-                    <option value="female" {{if eq .Gender "female"}}selected{{end}}>Женский</option>
-                    <option value="other" {{if eq .Gender "other"}}selected{{end}}>Другой</option>
+            <div class="grid">
+                <label>Имя <input type="text" name="first_name" value="{{.FirstName}}" required></label>
+                <label>Фамилия <input type="text" name="last_name" value="{{.LastName}}" required></label>
+            </div>
+            <div class="grid">
+                <label>Возраст <input type="number" name="age" min="13" max="120" value="{{.Age}}" required></label>
+                <label>Пол
+                    <select name="gender" required>
+                        <option value="male" {{if eq .Gender "male"}}selected{{end}}>Мужской</option>
+                        <option value="female" {{if eq .Gender "female"}}selected{{end}}>Женский</option>
+                        <option value="other" {{if eq .Gender "other"}}selected{{end}}>Другой</option>
+                    </select>
+                </label>
+            </div>
+            <div class="grid">
+                <label>Рост, см <input type="number" name="height_cm" min="100" max="250" value="{{.HeightCm}}" required></label>
+                <label>Вес, кг <input type="number" name="weight_kg" min="30" max="300" step="0.1" value="{{.WeightKg}}" required></label>
+            </div>
+            <label>Цель тренировок
+                <select name="goal" required>
+                    {{range $key, $name := $.GoalNames}}
+                    <option value="{{$key}}" {{if eq $.User.Goal $key}}selected{{end}}>{{$name}}</option>
+                    {{end}}
                 </select>
             </label>
-        </div>
-
-        <div class="grid">
-            <label>Рост (см)
-                <input type="number" name="height_cm" min="100" max="250" value="{{.HeightCm}}" required>
+            <label>Уровень активности
+                <select name="activity_level" required>
+                    {{range $key, $name := $.ActivityNames}}
+                    <option value="{{$key}}" {{if eq $.User.ActivityLevel $key}}selected{{end}}>{{$name}}</option>
+                    {{end}}
+                </select>
             </label>
-            <label>Вес (кг)
-                <input type="number" name="weight_kg" min="30" max="300" step="0.1" value="{{.WeightKg}}" required>
-            </label>
-        </div>
 
-        <label>Цель
-            <select name="goal" required>
-                {{range $key, $name := $.GoalNames}}
-                <option value="{{$key}}" {{if eq $.User.Goal $key}}selected{{end}}>{{$name}}</option>
-                {{end}}
-            </select>
-        </label>
-
-        <label>Уровень активности
-            <select name="activity_level" required>
-                {{range $key, $name := $.ActivityNames}}
-                <option value="{{$key}}" {{if eq $.User.ActivityLevel $key}}selected{{end}}>{{$name}}</option>
-                {{end}}
-            </select>
-        </label>
-
-        <button type="submit">Сохранить</button>
-    </form>
-    {{end}}
-
-    <p><a href="/dashboard">Вернуться в кабинет</a></p>
-</article>
+            <button type="submit" class="btn btn-primary" style="margin-top:0.75rem;">Сохранить (без отговорок)</button>
+        </form>
+        {{end}}
+    </div>
+</div>
 {{end}}

@@ -100,31 +100,29 @@ func NewServer(store *database.Store, sessions *auth.SessionManager, secretKey [
 }
 
 func (s *Server) setupRoutes(mux *http.ServeMux) {
-	authMW := auth.RequireAuth(s.sessions)
-
 	// --- Страницы (SSR) ---
 	mux.HandleFunc("GET /register", s.handleRegisterPage)
 	mux.HandleFunc("POST /register", s.handleRegisterForm)
 	mux.HandleFunc("GET /login", s.handleLoginPage)
 	mux.HandleFunc("POST /login", s.handleLoginForm)
 	mux.HandleFunc("POST /logout", s.handleLogout)
-	mux.Handle("GET /dashboard", authMW(http.HandlerFunc(s.handleDashboard)))
-	mux.Handle("GET /profile/edit", authMW(http.HandlerFunc(s.handleProfileEditPage)))
-	mux.Handle("POST /profile/edit", authMW(http.HandlerFunc(s.handleProfileEditForm)))
-	mux.Handle("GET /schedules", authMW(http.HandlerFunc(s.handleSchedulesPage)))
-	mux.Handle("POST /schedules/add", authMW(http.HandlerFunc(s.handleScheduleAdd)))
-	mux.Handle("POST /schedules/{id}/delete", authMW(http.HandlerFunc(s.handleScheduleDelete)))
+	mux.Handle("GET /dashboard", s.requireAuth(http.HandlerFunc(s.handleDashboard)))
+	mux.Handle("GET /profile/edit", s.requireAuth(http.HandlerFunc(s.handleProfileEditPage)))
+	mux.Handle("POST /profile/edit", s.requireAuth(http.HandlerFunc(s.handleProfileEditForm)))
+	mux.Handle("GET /schedules", s.requireAuth(http.HandlerFunc(s.handleSchedulesPage)))
+	mux.Handle("POST /schedules/add", s.requireAuth(http.HandlerFunc(s.handleScheduleAdd)))
+	mux.Handle("POST /schedules/{id}/delete", s.requireAuth(http.HandlerFunc(s.handleScheduleDelete)))
 	mux.HandleFunc("GET /unsubscribe", s.handleUnsubscribePage)
 
 	// --- API (JSON) ---
 	mux.HandleFunc("POST /api/register", s.handleAPIRegister)
 	mux.HandleFunc("POST /api/login", s.handleAPILogin)
-	mux.Handle("GET /api/profile", authMW(http.HandlerFunc(s.handleAPIProfile)))
-	mux.Handle("PUT /api/profile", authMW(http.HandlerFunc(s.handleAPIProfileUpdate)))
-	mux.Handle("GET /api/schedules", authMW(http.HandlerFunc(s.handleAPISchedules)))
-	mux.Handle("POST /api/schedules", authMW(http.HandlerFunc(s.handleAPIScheduleCreate)))
-	mux.Handle("PUT /api/schedules/{id}", authMW(http.HandlerFunc(s.handleAPIScheduleUpdate)))
-	mux.Handle("DELETE /api/schedules/{id}", authMW(http.HandlerFunc(s.handleAPIScheduleDelete)))
+	mux.Handle("GET /api/profile", s.requireAuth(http.HandlerFunc(s.handleAPIProfile)))
+	mux.Handle("PUT /api/profile", s.requireAuth(http.HandlerFunc(s.handleAPIProfileUpdate)))
+	mux.Handle("GET /api/schedules", s.requireAuth(http.HandlerFunc(s.handleAPISchedules)))
+	mux.Handle("POST /api/schedules", s.requireAuth(http.HandlerFunc(s.handleAPIScheduleCreate)))
+	mux.Handle("PUT /api/schedules/{id}", s.requireAuth(http.HandlerFunc(s.handleAPIScheduleUpdate)))
+	mux.Handle("DELETE /api/schedules/{id}", s.requireAuth(http.HandlerFunc(s.handleAPIScheduleDelete)))
 	mux.HandleFunc("POST /api/unsubscribe", s.handleAPIUnsubscribe)
 
 	// --- Сервисные ---
@@ -164,6 +162,7 @@ func (s *Server) loadTemplates() error {
 	pages := []string{
 		"register", "login", "dashboard",
 		"profile_edit", "schedules", "unsubscribe",
+		"error_401", "error_500",
 	}
 
 	s.templates = make(map[string]*template.Template, len(pages))
@@ -197,6 +196,36 @@ func (s *Server) render(w http.ResponseWriter, page string, data PageData) {
 	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
 		slog.Error("ошибка рендеринга шаблона", "page", page, "error", err)
 	}
+}
+
+func (s *Server) renderError(w http.ResponseWriter, status int) {
+	page := "error_500"
+	title := "Ошибка сервера"
+	if status == http.StatusUnauthorized {
+		page = "error_401"
+		title = "Требуется авторизация"
+	}
+	w.WriteHeader(status)
+	s.render(w, page, PageData{Title: title})
+}
+
+// requireAuth — middleware авторизации с красивой страницей ошибки.
+func (s *Server) requireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie(auth.SessionCookieName)
+		if err != nil {
+			s.renderError(w, http.StatusUnauthorized)
+			return
+		}
+		session, err := s.sessions.Validate(cookie.Value)
+		if err != nil {
+			auth.ClearCookie(w)
+			s.renderError(w, http.StatusUnauthorized)
+			return
+		}
+		ctx := auth.ContextWithUserID(r.Context(), session.UserID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // checkHoneypot проверяет honeypot-поле. Возвращает true если бот.

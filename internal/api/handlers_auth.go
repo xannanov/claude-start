@@ -70,7 +70,16 @@ func (s *Server) handleRegisterForm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("новый пользователь зарегистрирован", "email", user.Email, "id", user.ID)
-	http.Redirect(w, r, "/login?success=Регистрация+успешна.+Войдите+в+аккаунт.", http.StatusSeeOther)
+
+	// Авто-логин после регистрации
+	sessionToken, err := s.sessions.Create(user.ID)
+	if err != nil {
+		slog.Error("ошибка создания сессии после регистрации", "error", err)
+		http.Redirect(w, r, "/login?success=Регистрация+успешна.+Войдите+в+аккаунт.", http.StatusSeeOther)
+		return
+	}
+	auth.SetCookie(w, sessionToken)
+	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
 func (s *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {

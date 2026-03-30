@@ -15,8 +15,8 @@ type RateLimitConfig struct {
 }
 
 var (
-	// register: 3 запроса/час
-	rateLimitRegister = RateLimitConfig{Rate: rate.Every(time.Hour / 3), Burst: 3}
+	// register: 15 запросов/час
+	rateLimitRegister = RateLimitConfig{Rate: rate.Every(time.Hour / 15), Burst: 15}
 	// login: 10 запросов/15 минут
 	rateLimitLogin = RateLimitConfig{Rate: rate.Every(15 * time.Minute / 10), Burst: 10}
 	// остальные: 60 запросов/минуту

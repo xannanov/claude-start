@@ -1,11 +1,14 @@
 {{define "title"}}Отписка{{end}}
 {{define "content"}}
-<article>
-    <header><h1>Отписка от рассылки</h1></header>
+<main class="page page-narrow" style="margin-top:4rem;">
+    <div class="section" style="text-align:center;">
+        <div class="section-title" style="text-align:center;">ТренерНаПочте</div>
 
-    {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
-    {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
+        {{if .Error}}<div class="alert-error" style="text-align:left;">{{.Error}}</div>{{end}}
+        {{if .Success}}<div class="alert-success" style="text-align:left;">{{.Success}}</div>{{end}}
 
-    <p><a href="/login">Войти в аккаунт</a></p>
-</article>
+        <p style="color:var(--muted); font-size:0.9rem; margin-top:0.5rem;">Мышцы сами себя не накачают, но это ваш выбор.</p>
+        <p style="margin-top:1.25rem;"><a href="/login" style="color:var(--accent);">Войти в аккаунт</a></p>
+    </div>
+</main>
 {{end}}

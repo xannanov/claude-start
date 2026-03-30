@@ -1,46 +1,115 @@
-# Daily Email Sender
+# ТренерНаПочте — персональная фитнес-рассылка
 
-Go-приложение для отправки персонализированных мотивационных писем с тренировками и питанием. Пользователь регистрируется, задаёт расписание — и получает уникальные письма с AI-сгенерированным контентом.
-
-**Статус:** Фазы 1–2 выполнены. Текущая — Фаза 3 (рефакторинг архитектуры). Полный план: `docs/plan.md`.
+Go-приложение для отправки персонализированных мотивационных писем с тренировками и питанием. Пользователь регистрируется через веб-интерфейс, задаёт расписание — и получает уникальные письма на почту.
 
 ---
 
-## Требования
+## Быстрый старт
 
-- Go 1.21+
-- PostgreSQL 17+
-- SMTP-аккаунт (Yandex, Gmail, Microsoft)
+### 1. Что нужно установить
 
----
+| Что | Версия | Проверка |
+|-----|--------|----------|
+| Go | 1.21+ | `go version` |
+| PostgreSQL | 14+ | `psql --version` или проверьте что порт 5432 занят |
+| Docker (опционально) | — | нужен только для integration-тестов |
 
-## Установка
+### 2. Создайте базу данных
+
+Если PostgreSQL установлен локально, создайте БД:
+
+```sql
+CREATE DATABASE daily_email_sender;
+```
+
+Если не знаете как — откройте pgAdmin или выполните через командную строку:
+```bash
+psql -U postgres -c "CREATE DATABASE daily_email_sender;"
+```
+
+### 3. Настройте окружение
 
 ```bash
 cp .env.example .env
-# Отредактируйте .env: DATABASE_URL, SMTP_CONFIG
-go mod download
-go run ./cmd/server/ init-db
-go build -o server ./cmd/server/
 ```
 
-### Пример .env
+Откройте `.env` и заполните:
 
 ```env
-SMTP_CONFIG={"Host":"smtp.yandex.ru","Port":465,"User":"you@yandex.com","Password":"pass"}
-EMAIL_CONFIG={"From":"you@yandex.com"}
-DATABASE_URL="postgres://postgres:PASSWORD@localhost:5432/daily_email_sender?sslmode=disable&client_encoding=UTF-8"
+# Подключение к PostgreSQL
+# Формат: postgres://ПОЛЬЗОВАТЕЛЬ:ПАРОЛЬ@ХОСТ:ПОРТ/ИМЯ_БАЗЫ
+DATABASE_URL=postgres://postgres:ваш_пароль@localhost:5432/daily_email_sender?sslmode=disable&client_encoding=UTF-8
+
+# SMTP (Яндекс Почта)
+# Пароль приложения создаётся тут: https://id.yandex.ru/security/app-passwords
+SMTP_CONFIG={"Host":"smtp.yandex.ru","Port":465,"User":"ваш_email@yandex.com","Password":"пароль_приложения"}
+
+# От кого приходят письма (тот же email что в SMTP)
+EMAIL_CONFIG={"From":"ваш_email@yandex.com"}
+
+# Порт веб-интерфейса (по умолчанию 8080)
+SERVER_PORT=8080
+
+# Секретный ключ для токенов отписки (64 hex-символа)
+# Если не задать — сгенерируется случайный (токены не переживут перезапуск)
+# SECRET_KEY=ваш_hex_ключ_64_символа
 ```
+
+### 4. Установите зависимости и создайте таблицы
+
+```bash
+go mod download
+go run ./cmd/server/ init-db
+```
+
+### 5. Запустите
+
+```bash
+go run ./cmd/server/ serve
+```
+
+Откройте в браузере: **http://localhost:8080**
+
+Зарегистрируйтесь, настройте расписание — готово!
 
 ---
 
-## Использование
+## Все команды
+
+| Команда | Что делает |
+|---------|-----------|
+| `go run ./cmd/server/ serve` | Запускает веб-сервер + планировщик рассылки |
+| `go run ./cmd/server/ init-db` | Создаёт таблицы в БД |
+| `go run ./cmd/server/ run-scheduler` | Запускает только планировщик (без веб-интерфейса) |
+| `go run ./cmd/server/ add-user` | Добавить пользователя через CLI |
+| `go run ./cmd/server/ list-users` | Показать всех пользователей |
+| `go run ./cmd/server/ add-schedule` | Задать расписание через CLI |
+| `go run ./cmd/server/ help` | Справка |
+
+---
+
+## Тесты
+
+### Unit-тесты (без Docker)
 
 ```bash
-go run ./cmd/server/ add-user        # Добавить пользователя
-go run ./cmd/server/ list-users      # Список пользователей
-go run ./cmd/server/ add-schedule    # Задать расписание отправки
-go run ./cmd/server/ run-scheduler   # Запустить планировщик
+go test ./internal/auth/ ./internal/api/ ./internal/validation/ -v
+```
+
+### Integration-тесты (нужен Docker)
+
+Тесты БД запускают PostgreSQL в контейнере автоматически:
+
+```bash
+go test ./internal/database/ -v
+```
+
+Если Docker не запущен — тесты пропустятся с сообщением `Docker недоступен`.
+
+### Все тесты разом
+
+```bash
+go test ./... -v
 ```
 
 ---
@@ -48,11 +117,46 @@ go run ./cmd/server/ run-scheduler   # Запустить планировщик
 ## Структура проекта
 
 ```
-cmd/server/          — точка входа
-internal/            — бизнес-логика
-migrations/          — схема БД
-docs/                — план разработки
+cmd/server/main.go        — точка входа, CLI-команды
+internal/
+  api/                     — HTTP-сервер, хендлеры, шаблоны, middleware
+  auth/                    — авторизация (bcrypt, сессии, middleware)
+  config/                  — загрузка настроек из .env
+  database/                — все операции с PostgreSQL
+  models/                  — модели данных (User, Schedule и т.д.)
+  scheduler/               — фоновая отправка писем по расписанию
+  email/                   — SMTP-отправка + HTML-шаблоны писем
+  validation/              — валидация входных данных
+  cli/                     — интерактивный CLI
+migrations/schema.sql      — SQL-схема базы данных
+docs/plan.md               — план разработки по фазам
 ```
+
+---
+
+## Веб-интерфейс
+
+| Страница | Адрес | Описание |
+|----------|-------|----------|
+| Регистрация | `/register` | Email, пароль, параметры тела, цель |
+| Вход | `/login` | Email + пароль |
+| Личный кабинет | `/dashboard` | Профиль + расписания |
+| Профиль | `/profile/edit` | Изменить данные |
+| Расписание | `/schedules` | Добавить/удалить дни рассылки |
+| Отписка | `/unsubscribe?token=...` | Ссылка из письма |
+| Здоровье | `/health` | Проверка доступности БД |
+
+---
+
+## Частые проблемы
+
+**`ошибка подключения к БД`** — проверьте что PostgreSQL запущен и DATABASE_URL правильный.
+
+**`SMTP недоступен`** — убедитесь что SMTP_CONFIG содержит правильный пароль приложения (не пароль от почты!).
+
+**`Слишком много запросов`** — rate limit. Перезапустите сервер для сброса, или подождите.
+
+**Тесты БД пропускаются** — запустите Docker Desktop.
 
 ---
 

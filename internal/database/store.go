@@ -209,18 +209,28 @@ func (s *Store) UpdatePasswordHash(userID, passwordHash string) error {
 	return nil
 }
 
-// CreateUserSchedule создаёт расписание; при дубликате активирует существующее.
+// CreateUserSchedule создаёт расписание. Возвращает ошибку если такое уже существует.
 func (s *Store) CreateUserSchedule(schedule *models.UserSchedule) error {
-	query := `
+	// Проверяем дубликат до вставки
+	var exists bool
+	err := s.db.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM user_schedules
+			WHERE user_id=$1 AND day_of_week=$2 AND time_hour=$3 AND time_minute=$4 AND is_active=true
+		)`,
+		schedule.UserID, schedule.DayOfWeek, schedule.TimeHour, schedule.TimeMinute,
+	).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("Ошибка проверки дубликата: %w", err)
+	}
+	if exists {
+		return fmt.Errorf("Расписание на этот день и время уже существует")
+	}
+
+	return s.db.QueryRow(`
 		INSERT INTO user_schedules (user_id, day_of_week, time_hour, time_minute, email_type, is_active)
 		VALUES ($1, $2, $3, $4, $5, true)
-		ON CONFLICT (user_id, day_of_week, time_hour, time_minute)
-		DO UPDATE SET is_active = true, updated_at = CURRENT_TIMESTAMP
-		RETURNING id
-	`
-
-	return s.db.QueryRow(
-		query,
+		RETURNING id`,
 		schedule.UserID, schedule.DayOfWeek, schedule.TimeHour,
 		schedule.TimeMinute, schedule.EmailType,
 	).Scan(&schedule.ID)

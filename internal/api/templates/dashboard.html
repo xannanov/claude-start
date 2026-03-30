@@ -1,57 +1,60 @@
 {{define "title"}}Личный кабинет{{end}}
 {{define "content"}}
-<nav>
-    <ul><li><strong>FitMail</strong></li></ul>
-    <ul>
-        <li><a href="/dashboard">Кабинет</a></li>
-        <li><a href="/schedules">Расписание</a></li>
-        <li><a href="/profile/edit">Профиль</a></li>
-        <li><form method="POST" action="/logout" style="margin:0"><button type="submit" class="outline secondary" style="margin:0;padding:0.25rem 0.75rem">Выйти</button></form></li>
-    </ul>
-</nav>
+{{template "nav" .}}
 
+<div class="page">
 {{with .User}}
-<article>
-    <header><h1>Личный кабинет</h1></header>
+    <div class="section">
+        <div class="section-header">
+            <div>
+                <div class="section-title">{{.FirstName}} {{.LastName}}</div>
+                <span style="color:var(--muted); font-size:0.85rem;">{{.Email}}</span>
+            </div>
+            <a href="/profile/edit" class="btn btn-outline btn-full-mobile">Редактировать</a>
+        </div>
 
-    <div class="grid">
-        <div>
-            <hgroup>
-                <h3>{{.FirstName}} {{.LastName}}</h3>
-                <p>{{.Email}}</p>
-            </hgroup>
-            <table>
-                <tr><td>Возраст</td><td>{{.Age}} лет</td></tr>
-                <tr><td>Пол</td><td>{{if eq .Gender "male"}}Мужской{{else if eq .Gender "female"}}Женский{{else}}Другой{{end}}</td></tr>
-                <tr><td>Рост</td><td>{{.HeightCm}} см</td></tr>
-                <tr><td>Вес</td><td>{{.WeightKg}} кг</td></tr>
-                <tr><td>Цель</td><td>{{index $.GoalNames .Goal}}</td></tr>
-                <tr><td>Активность</td><td>{{index $.ActivityNames .ActivityLevel}}</td></tr>
-            </table>
-            <a href="/profile/edit" role="button" class="outline">Редактировать профиль</a>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-val">{{.Age}}</div>
+                <div class="stat-lbl">Возраст</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val">{{.HeightCm}}</div>
+                <div class="stat-lbl">Рост, см</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val">{{.WeightKg}}</div>
+                <div class="stat-lbl">Вес, кг</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val" style="font-size:1rem;">{{index $.GoalNames .Goal}}</div>
+                <div class="stat-lbl">Цель</div>
+            </div>
         </div>
     </div>
-</article>
 {{end}}
 
-<article>
-    <header><h3>Расписание рассылки</h3></header>
-    {{with .Schedules}}
-        <table>
-            <thead><tr><th>День</th><th>Время</th><th>Тип</th></tr></thead>
-            <tbody>
-                {{range .}}
-                <tr>
-                    <td>{{dayName .DayOfWeek}}</td>
-                    <td>{{printf "%02d:%02d" .TimeHour .TimeMinute}}</td>
-                    <td>{{.EmailType}}</td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
-    {{else}}
-        <p>Нет активных расписаний.</p>
-    {{end}}
-    <a href="/schedules" role="button" class="outline">Управление расписанием</a>
-</article>
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">Расписание рассылки</div>
+            <a href="/schedules" class="btn btn-outline">Управление</a>
+        </div>
+
+        {{with .Schedules}}
+            {{range .}}
+            <div class="sched-row">
+                <div class="sched-left">
+                    <span class="sched-day">{{dayName .DayOfWeek}}</span>
+                    <span class="sched-time">{{printf "%02d:%02d" .TimeHour .TimeMinute}}</span>
+                    <span class="sched-type">{{.EmailType}}</span>
+                </div>
+            </div>
+            {{end}}
+        {{else}}
+            <p style="color:var(--muted); text-align:center; padding:1.5rem 0; margin:0;">
+                🛋️ Расписаний нет. Диван себя сам не покинет, но попробовать стоит. <a href="/schedules" style="color:var(--accent);">Настроить</a>
+            </p>
+        {{end}}
+    </div>
+</div>
 {{end}}

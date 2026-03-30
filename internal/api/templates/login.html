@@ -1,26 +1,31 @@
 {{define "title"}}Вход{{end}}
 {{define "content"}}
-<article>
-    <header><h1>Вход</h1></header>
+<main class="page page-narrow" style="margin-top:4rem;">
+    <div class="section">
+        <div class="auth-header">
+            <h1>Тренер<span style="color:var(--accent)">На</span>Почте</h1>
+            <p class="auth-subtitle">Войдите — тренировки сами о себе не напомнят.</p>
+        </div>
 
-    {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
-    {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
+        {{if .Error}}<div class="alert-error">{{.Error}}</div>{{end}}
+        {{if .Success}}<div class="alert-success">{{.Success}}</div>{{end}}
 
-    <form method="POST" action="/login">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <div class="honeypot"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+        <form method="POST" action="/login">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <div hidden aria-hidden="true"><input type="text" name="website" tabindex="-1" autocomplete="off"></div>
 
-        <label>Email
-            <input type="email" name="email" required autofocus>
-        </label>
+            <label>Email
+                <input type="email" name="email" placeholder="you@example.com" required autofocus>
+            </label>
 
-        <label>Пароль
-            <input type="password" name="password" required>
-        </label>
+            <label>Пароль
+                <input type="password" name="password" placeholder="Введите пароль" required>
+            </label>
 
-        <button type="submit">Войти</button>
-    </form>
+            <button type="submit" class="btn btn-primary btn-full" style="margin-top:0.5rem;">Войти 💪</button>
+        </form>
 
-    <p>Нет аккаунта? <a href="/register">Зарегистрироваться</a></p>
-</article>
+        <p class="auth-footer">Нет аккаунта? <a href="/register">Исправить это</a></p>
+    </div>
+</main>
 {{end}}
