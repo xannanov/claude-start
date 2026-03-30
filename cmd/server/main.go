@@ -11,6 +11,7 @@ import (
 	"time"
 	_ "time/tzdata" // встраивает timezone DB в бинарник (нужно для Alpine/Docker без tzdata)
 
+	"daily-email-sender/internal/ai"
 	"daily-email-sender/internal/api"
 	"daily-email-sender/internal/auth"
 	"daily-email-sender/internal/cli"
@@ -119,13 +120,23 @@ func runServe() error {
 		return fmt.Errorf("ошибка создания сервера: %w", err)
 	}
 
+	// Инициализация AI-генератора
+	var aiGen *ai.Generator
+	if cfg.DeepSeekAPIKey != "" {
+		deepseekClient := ai.NewDeepSeekClient(cfg.DeepSeekAPIKey, cfg.DeepSeekURL, cfg.DeepSeekModel)
+		aiGen = ai.NewGenerator(deepseekClient, store, cfg.DeepSeekModel)
+		slog.Info("AI-персонализация включена", "model", cfg.DeepSeekModel)
+	} else {
+		slog.Warn("AI-персонализация отключена (DEEPSEEK_API_KEY не задан)")
+	}
+
 	// Запускаем scheduler в фоне
 	schedulerDone := make(chan struct{})
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
 	defer schedulerCancel()
 	go func() {
 		defer close(schedulerDone)
-		scheduler.Run(store, sender, 1*time.Minute, schedulerCtx)
+		scheduler.Run(store, sender, aiGen, 1*time.Minute, schedulerCtx)
 	}()
 
 	// Запускаем HTTP-сервер в фоне
@@ -205,7 +216,16 @@ func runScheduler() error {
 	}
 	slog.Info("SMTP-соединение успешно проверено")
 
-	scheduler.Run(store, sender, 1*time.Minute, context.Background())
+	var aiGen *ai.Generator
+	if cfg.DeepSeekAPIKey != "" {
+		deepseekClient := ai.NewDeepSeekClient(cfg.DeepSeekAPIKey, cfg.DeepSeekURL, cfg.DeepSeekModel)
+		aiGen = ai.NewGenerator(deepseekClient, store, cfg.DeepSeekModel)
+		slog.Info("AI-персонализация включена", "model", cfg.DeepSeekModel)
+	} else {
+		slog.Warn("AI-персонализация отключена (DEEPSEEK_API_KEY не задан)")
+	}
+
+	scheduler.Run(store, sender, aiGen, 1*time.Minute, context.Background())
 	return nil
 }
 

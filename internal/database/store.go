@@ -419,6 +419,49 @@ func (s *Store) DeactivateScheduleByID(scheduleID int) error {
 	return nil
 }
 
+// GetRecentWorkoutHistory возвращает последние N записей тренировок пользователя.
+func (s *Store) GetRecentWorkoutHistory(userID string, limit int) ([]models.WorkoutHistory, error) {
+	query := `
+		SELECT id, user_id, date, muscle_group
+		FROM workout_history
+		WHERE user_id = $1
+		ORDER BY date DESC
+		LIMIT $2
+	`
+
+	rows, err := s.db.Query(query, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка получения истории тренировок: %w", err)
+	}
+	defer rows.Close()
+
+	var history []models.WorkoutHistory
+	for rows.Next() {
+		var h models.WorkoutHistory
+		if err := rows.Scan(&h.ID, &h.UserID, &h.Date, &h.MuscleGroup); err != nil {
+			return nil, fmt.Errorf("ошибка чтения записи тренировки: %w", err)
+		}
+		history = append(history, h)
+	}
+	return history, rows.Err()
+}
+
+// SaveWorkoutHistory сохраняет мышечную группу тренировки текущего дня.
+// При повторном вызове в тот же день обновляет запись (ON CONFLICT).
+func (s *Store) SaveWorkoutHistory(userID, muscleGroup string) error {
+	query := `
+		INSERT INTO workout_history (user_id, date, muscle_group)
+		VALUES ($1, CURRENT_DATE, $2)
+		ON CONFLICT (user_id, date) DO UPDATE SET muscle_group = $2
+	`
+
+	_, err := s.db.Exec(query, userID, muscleGroup)
+	if err != nil {
+		return fmt.Errorf("ошибка сохранения истории тренировки: %w", err)
+	}
+	return nil
+}
+
 // Ping проверяет доступность базы данных.
 func (s *Store) Ping() error {
 	return s.db.Ping()

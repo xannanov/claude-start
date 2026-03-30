@@ -9,6 +9,12 @@
         <p>Приветствую, {{.FirstName}} {{.LastName}}!</p>
         <p><strong>Сегодня {{.DayName}}</strong></p>
 
+        {{if .Motivation}}
+        <p style="background-color: #E8F5E9; border-radius: 8px; padding: 15px; font-size: 16px; line-height: 1.5;">
+            {{.Motivation}}
+        </p>
+        {{end}}
+
         <h3 style="color: #2196F3;">🔥 Тренировка на сегодня:</h3>
         <h4 style="color: #1976D2;">{{.WorkoutTitle}}</h4>
         <p><em>{{.WorkoutDescription}}</em></p>
@@ -21,6 +27,8 @@
         <h3 style="color: #FF9800; margin-top: 30px;">🍎 Питание на сегодня:</h3>
         <p><strong>Твоя цель:</strong> {{.CalorieTarget}}</p>
         <p><strong>Белок:</strong> {{.ProteinGoal}}</p>
+        {{if .Fat}}<p><strong>Жиры:</strong> {{.Fat}}</p>{{end}}
+        {{if .Carbs}}<p><strong>Углеводы:</strong> {{.Carbs}}</p>{{end}}
         <p><strong>Вода:</strong> {{.WaterIntake}}</p>
 
         <h4>Завтрак:</h4>
@@ -38,6 +46,9 @@
             {{end}}
         </ul>
 
+        {{if .IsFallback}}
+        <p style="margin-top: 20px; color: #FF9800; font-size: 12px;">⚠️ Сегодня используется стандартная программа. Завтра вернёмся с персональной!</p>
+        {{end}}
         <p style="margin-top: 30px; color: #888; font-size: 12px;">Время: {{.SentAt}}</p>
     </div>
 </body>

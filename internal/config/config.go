@@ -13,11 +13,14 @@ import (
 
 // Config содержит все настройки приложения.
 type Config struct {
-	DatabaseURL string
-	SMTP        SMTPConfig
-	EmailFrom   string
-	ServerPort  string // порт HTTP-сервера (по умолчанию 8080)
-	SecretKey   []byte // ключ для подписи токенов (HMAC)
+	DatabaseURL    string
+	SMTP           SMTPConfig
+	EmailFrom      string
+	ServerPort     string // порт HTTP-сервера (по умолчанию 8080)
+	SecretKey      []byte // ключ для подписи токенов (HMAC)
+	DeepSeekAPIKey string // ключ DeepSeek API (пустой = AI отключён)
+	DeepSeekModel  string // модель DeepSeek (по умолчанию deepseek-chat)
+	DeepSeekURL    string // базовый URL DeepSeek API
 }
 
 // SMTPConfig содержит параметры SMTP-сервера
@@ -77,12 +80,30 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	deepSeekAPIKey := os.Getenv("DEEPSEEK_API_KEY")
+	if deepSeekAPIKey == "" {
+		slog.Warn("DEEPSEEK_API_KEY не задан — AI-персонализация отключена, используются шаблоны")
+	}
+
+	deepSeekModel := os.Getenv("DEEPSEEK_MODEL")
+	if deepSeekModel == "" {
+		deepSeekModel = "deepseek-chat"
+	}
+
+	deepSeekURL := os.Getenv("DEEPSEEK_URL")
+	if deepSeekURL == "" {
+		deepSeekURL = "https://api.deepseek.com"
+	}
+
 	return &Config{
-		DatabaseURL: dbURL,
-		SMTP:        smtp,
-		EmailFrom:   emailCfg.From,
-		ServerPort:  port,
-		SecretKey:   secretKey,
+		DatabaseURL:    dbURL,
+		SMTP:           smtp,
+		EmailFrom:      emailCfg.From,
+		ServerPort:     port,
+		SecretKey:      secretKey,
+		DeepSeekAPIKey: deepSeekAPIKey,
+		DeepSeekModel:  deepSeekModel,
+		DeepSeekURL:    deepSeekURL,
 	}, nil
 }
 

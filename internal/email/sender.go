@@ -33,6 +33,8 @@ type emailData struct {
 	FirstName          string
 	LastName           string
 	DayName            string
+	Motivation         string
+	IsFallback         bool
 	WorkoutTitle       string
 	WorkoutDescription string
 	WorkoutDuration    string
@@ -40,6 +42,8 @@ type emailData struct {
 	CalorieTarget      string
 	ProteinGoal        string
 	WaterIntake        string
+	Fat                string
+	Carbs              string
 	Breakfast          string
 	Lunch              string
 	Dinner             string
@@ -115,6 +119,8 @@ func buildEmailData(msg models.PersonalizedMessage) emailData {
 		FirstName:          msg.User.FirstName,
 		LastName:           msg.User.LastName,
 		DayName:            msg.DayOfWeek,
+		Motivation:         msg.Motivation,
+		IsFallback:         msg.IsFallback,
 		WorkoutTitle:       msg.Workout.Title,
 		WorkoutDescription: msg.Workout.Description,
 		WorkoutDuration:    msg.Workout.Duration,
@@ -122,6 +128,8 @@ func buildEmailData(msg models.PersonalizedMessage) emailData {
 		CalorieTarget:      msg.Nutrition.CalorieTarget,
 		ProteinGoal:        msg.Nutrition.ProteinGoal,
 		WaterIntake:        msg.Nutrition.WaterIntake,
+		Fat:                msg.Nutrition.Fat,
+		Carbs:              msg.Nutrition.Carbs,
 		Breakfast:          msg.Nutrition.Breakfast,
 		Lunch:              msg.Nutrition.Lunch,
 		Dinner:             msg.Nutrition.Dinner,

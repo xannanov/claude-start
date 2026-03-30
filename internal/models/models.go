@@ -48,15 +48,27 @@ type NutritionPlan struct {
 	ProteinGoal   string   `json:"protein_goal"`
 	CalorieTarget string   `json:"calorie_target"`
 	WaterIntake   string   `json:"water_intake"`
+	Fat           string   `json:"fat"`
+	Carbs         string   `json:"carbs"`
 }
 
 // PersonalizedMessage represents a fully personalized email message
 type PersonalizedMessage struct {
-	Subject   string
-	Body      string
-	Workout   WorkoutPlan
-	Nutrition NutritionPlan
-	User      User
-	DayOfWeek string
-	TimeOfDay string
+	Subject    string
+	Body       string
+	Motivation string
+	IsFallback bool
+	Workout    WorkoutPlan
+	Nutrition  NutritionPlan
+	User       User
+	DayOfWeek  string
+	TimeOfDay  string
+}
+
+// WorkoutHistory хранит информацию о прошлых тренировках для ротации мышечных групп.
+type WorkoutHistory struct {
+	ID          int
+	UserID      string
+	Date        time.Time
+	MuscleGroup string
 }

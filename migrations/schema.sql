@@ -33,7 +33,18 @@ CREATE TABLE IF NOT EXISTS user_schedules (
     UNIQUE(user_id, day_of_week, time_hour, time_minute)
 );
 
+-- Workout history for muscle group rotation (Phase 8)
+CREATE TABLE IF NOT EXISTS workout_history (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    muscle_group VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, date)
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_schedules_user_id ON user_schedules(user_id);
 CREATE INDEX IF NOT EXISTS idx_schedules_day_time ON user_schedules(day_of_week, time_hour, time_minute);
+CREATE INDEX IF NOT EXISTS idx_workout_history_user_date ON workout_history(user_id, date DESC);

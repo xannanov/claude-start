@@ -10,8 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"daily-email-sender/internal/ai"
 	"daily-email-sender/internal/database"
 	"daily-email-sender/internal/email"
+	"daily-email-sender/internal/models"
 )
 
 const maxConsecutiveErrors = 10
@@ -31,19 +33,21 @@ func init() {
 type Scheduler struct {
 	store             *database.Store
 	sender            *email.Sender
+	aiGenerator       *ai.Generator
 	interval          time.Duration
 	stopChan          chan struct{}
 	wg                sync.WaitGroup
 	consecutiveErrors int
 }
 
-// New создаёт планировщик.
-func New(store *database.Store, sender *email.Sender, interval time.Duration) *Scheduler {
+// New создаёт планировщик. aiGen может быть nil (AI отключён).
+func New(store *database.Store, sender *email.Sender, aiGen *ai.Generator, interval time.Duration) *Scheduler {
 	return &Scheduler{
-		store:    store,
-		sender:   sender,
-		interval: interval,
-		stopChan: make(chan struct{}),
+		store:       store,
+		sender:      sender,
+		aiGenerator: aiGen,
+		interval:    interval,
+		stopChan:    make(chan struct{}),
 	}
 }
 
@@ -115,9 +119,14 @@ func (s *Scheduler) checkAndSendEmails() {
 	}
 	s.consecutiveErrors = 0
 
+	sent := 0
 	for _, sc := range schedules {
 		if sc.TimeHour == currentHour && sc.TimeMinute == currentMinute {
+			if sent > 0 {
+				time.Sleep(300 * time.Millisecond)
+			}
 			s.sendEmailForSchedule(sc.ID, sc.UserID, sc.DayOfWeek, sc.TimeHour, sc.TimeMinute, sc.EmailType)
+			sent++
 		}
 	}
 }
@@ -129,7 +138,12 @@ func (s *Scheduler) sendEmailForSchedule(id int, userID string, dayOfWeek, hour,
 		return
 	}
 
-	msg := email.GeneratePersonalizedMessage(*user, dayOfWeek, emailType)
+	var msg models.PersonalizedMessage
+	if s.aiGenerator != nil {
+		msg = s.aiGenerator.GeneratePersonalizedMessage(*user, dayOfWeek, emailType)
+	} else {
+		msg = email.GeneratePersonalizedMessage(*user, dayOfWeek, emailType)
+	}
 
 	delays := []time.Duration{1 * time.Second, 5 * time.Second, 15 * time.Second}
 	for attempt, delay := range delays {
@@ -156,8 +170,8 @@ func (s *Scheduler) sendEmailForSchedule(id int, userID string, dayOfWeek, hour,
 
 // Run запускает планировщик и ждёт завершения через контекст или системный сигнал.
 // Если ctx == context.Background(), ожидает SIGINT/SIGTERM (автономный режим).
-func Run(store *database.Store, sender *email.Sender, interval time.Duration, ctx context.Context) {
-	s := New(store, sender, interval)
+func Run(store *database.Store, sender *email.Sender, aiGen *ai.Generator, interval time.Duration, ctx context.Context) {
+	s := New(store, sender, aiGen, interval)
 	s.Start()
 
 	sigChan := make(chan os.Signal, 1)
