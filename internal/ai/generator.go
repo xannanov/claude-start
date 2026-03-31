@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"daily-email-sender/internal/database"
@@ -11,25 +12,36 @@ import (
 	"daily-email-sender/internal/models"
 )
 
-// defaultRetryDelays — задержки между retry-попытками AI-запросов.
-var defaultRetryDelays = []time.Duration{2 * time.Second, 5 * time.Second, 10 * time.Second}
+// defaultRetryDelays — задержки между retry-попытками для сетевых ошибок.
+var defaultRetryDelays = []time.Duration{5 * time.Second, 10 * time.Second, 20 * time.Second}
 
 // Generator отвечает за генерацию персонализированного контента через AI.
 type Generator struct {
-	client      Client
-	store       *database.Store
-	model       string
-	retryDelays []time.Duration // переопределяется в тестах
+	client         Client
+	store          *database.Store
+	model          string
+	retryDelays    []time.Duration // переопределяется в тестах
+	rateLimitDelay time.Duration   // пауза при 429 (rate limit)
 }
 
 // NewGenerator создаёт генератор AI-контента.
 func NewGenerator(client Client, store *database.Store, model string) *Generator {
 	return &Generator{
-		client:      client,
-		store:       store,
-		model:       model,
-		retryDelays: defaultRetryDelays,
+		client:         client,
+		store:          store,
+		model:          model,
+		retryDelays:    defaultRetryDelays,
+		rateLimitDelay: 65 * time.Second,
 	}
+}
+
+// isRateLimitError проверяет, является ли ошибка rate limit (HTTP 429).
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "429") || strings.Contains(msg, "Rate limit") || strings.Contains(msg, "rate_limit")
 }
 
 // GeneratePersonalizedMessage генерирует персонализированное сообщение через AI.
@@ -50,30 +62,16 @@ func (g *Generator) GeneratePersonalizedMessage(user models.User, dayOfWeek int,
 
 	ctx := context.Background()
 
-	// 1. Генерация тренировки (с retry на ошибки API и парсинга)
-	workoutResp, err := callAndParse(g, ctx, buildWorkoutPrompt(user, dayName, emailType, history), 0.8, parseWorkoutResponse)
+	// Один запрос — тренировка + питание + мотивация
+	combined, err := callAndParse(g, ctx, buildCombinedPrompt(user, dayName, emailType, history), 0.85, parseCombinedResponse)
 	if err != nil {
-		slog.Error("AI: генерация тренировки провалилась", "user_id", user.ID, "error", err)
-		return g.generateFallbackMessage(user, dayOfWeek, emailType)
-	}
-
-	// 2. Генерация питания
-	nutritionResp, err := callAndParse(g, ctx, buildNutritionPrompt(user), 0.8, parseNutritionResponse)
-	if err != nil {
-		slog.Error("AI: генерация питания провалилась", "user_id", user.ID, "error", err)
-		return g.generateFallbackMessage(user, dayOfWeek, emailType)
-	}
-
-	// 3. Генерация мотивации
-	motivationResp, err := callAndParse(g, ctx, buildMotivationPrompt(user, dayName), 0.9, parseMotivationResponse)
-	if err != nil {
-		slog.Error("AI: генерация мотивации провалилась", "user_id", user.ID, "error", err)
+		slog.Error("AI: генерация провалилась", "user_id", user.ID, "error", err)
 		return g.generateFallbackMessage(user, dayOfWeek, emailType)
 	}
 
 	// Сохранить мышечную группу в историю
-	if g.store != nil && workoutResp.MuscleGroup != "" {
-		if err := g.store.SaveWorkoutHistory(user.ID, workoutResp.MuscleGroup); err != nil {
+	if g.store != nil && combined.Workout.MuscleGroup != "" {
+		if err := g.store.SaveWorkoutHistory(user.ID, combined.Workout.MuscleGroup); err != nil {
 			slog.Warn("не удалось сохранить историю тренировки", "user_id", user.ID, "error", err)
 		}
 	}
@@ -91,9 +89,9 @@ func (g *Generator) GeneratePersonalizedMessage(user models.User, dayOfWeek int,
 
 	return models.PersonalizedMessage{
 		Subject:    greeting,
-		Motivation: motivationResp.Text,
-		Workout:    convertWorkout(workoutResp),
-		Nutrition:  convertNutrition(nutritionResp),
+		Motivation: combined.Motivation.Text,
+		Workout:    convertWorkout(&combined.Workout),
+		Nutrition:  convertNutrition(&combined.Nutrition),
 		User:       user,
 		DayOfWeek:  dayName,
 		TimeOfDay:  emailType,
@@ -115,9 +113,14 @@ func callAndParse[T any](g *Generator, ctx context.Context, messages []ChatMessa
 		})
 		if err != nil {
 			lastErr = err
-			slog.Warn("AI запрос не удался", "attempt", attempt+1, "error", err)
-			if attempt < len(g.retryDelays)-1 {
-				time.Sleep(delay)
+			if isRateLimitError(err) {
+				slog.Warn("AI: rate limit (429), ожидание перед retry", "attempt", attempt+1, "wait", g.rateLimitDelay)
+				time.Sleep(g.rateLimitDelay)
+			} else {
+				slog.Warn("AI запрос не удался", "attempt", attempt+1, "error", err)
+				if attempt < len(g.retryDelays)-1 {
+					time.Sleep(delay)
+				}
 			}
 			continue
 		}

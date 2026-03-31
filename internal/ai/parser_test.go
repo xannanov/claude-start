@@ -56,99 +56,102 @@ func TestExtractJSON_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestParseWorkoutResponse_Valid(t *testing.T) {
+func TestParseCombinedResponse_Valid(t *testing.T) {
 	raw := `{
-		"title": "Силовая тренировка",
-		"muscle_group": "chest",
-		"duration": "45 минут",
-		"description": "Тренировка на грудь",
-		"exercises": [
-			{"name": "Жим лёжа", "sets": "4 подхода", "reps": "8-10 раз"},
-			{"name": "Разводка", "sets": "3 подхода", "reps": "12 раз"}
-		]
+		"workout": {
+			"title": "Силовая тренировка на грудь",
+			"muscle_group": "chest",
+			"duration": "45 минут",
+			"description": "Тренировка для набора мышечной массы",
+			"exercises": [
+				{"name": "Жим лёжа", "sets": "4 подхода", "reps": "8-10 раз"},
+				{"name": "Разводка гантелей", "sets": "3 подхода", "reps": "12 раз"}
+			]
+		},
+		"nutrition": {
+			"breakfast": "Овсянка 150г + яйцо 2шт",
+			"lunch": "Куриная грудка 200г + рис 150г",
+			"dinner": "Лосось 180г + овощи",
+			"snacks": ["Творог 200г", "Банан"],
+			"calories": "2800 ккал",
+			"protein": "180 г",
+			"fat": "80 г",
+			"carbs": "300 г",
+			"water_ml": "2800 мл"
+		},
+		"motivation": {
+			"text": "Алексей, сегодня твой день! 💪 Грудь не прокачает себя сама!"
+		}
 	}`
-	resp, err := parseWorkoutResponse(raw)
+	resp, err := parseCombinedResponse(raw)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.Title != "Силовая тренировка" {
-		t.Errorf("title = %q", resp.Title)
+	if resp.Workout.Title != "Силовая тренировка на грудь" {
+		t.Errorf("workout.title = %q", resp.Workout.Title)
 	}
-	if resp.MuscleGroup != "chest" {
-		t.Errorf("muscle_group = %q", resp.MuscleGroup)
+	if resp.Workout.MuscleGroup != "chest" {
+		t.Errorf("workout.muscle_group = %q", resp.Workout.MuscleGroup)
 	}
-	if len(resp.Exercises) != 2 {
-		t.Errorf("exercises count = %d, want 2", len(resp.Exercises))
+	if len(resp.Workout.Exercises) != 2 {
+		t.Errorf("exercises count = %d, want 2", len(resp.Workout.Exercises))
+	}
+	if resp.Nutrition.Breakfast != "Овсянка 150г + яйцо 2шт" {
+		t.Errorf("nutrition.breakfast = %q", resp.Nutrition.Breakfast)
+	}
+	if resp.Nutrition.Calories != "2800 ккал" {
+		t.Errorf("nutrition.calories = %q", resp.Nutrition.Calories)
+	}
+	if resp.Motivation.Text == "" {
+		t.Error("motivation.text is empty")
 	}
 }
 
-func TestParseWorkoutResponse_MissingTitle(t *testing.T) {
-	raw := `{"duration": "30 мин", "exercises": [{"name": "Бег", "sets": "1", "reps": "30 мин"}]}`
-	_, err := parseWorkoutResponse(raw)
+func TestParseCombinedResponse_MissingWorkoutTitle(t *testing.T) {
+	raw := `{
+		"workout": {"muscle_group": "chest", "duration": "30 мин", "exercises": [{"name": "Жим", "sets": "3", "reps": "10"}]},
+		"nutrition": {"breakfast": "Каша", "lunch": "Суп", "dinner": "Рыба", "calories": "2000 ккал"},
+		"motivation": {"text": "Давай!"}
+	}`
+	_, err := parseCombinedResponse(raw)
 	if err == nil {
-		t.Fatal("expected error for missing title")
+		t.Fatal("expected error for missing workout.title")
 	}
 }
 
-func TestParseWorkoutResponse_NoExercises(t *testing.T) {
-	raw := `{"title": "Тренировка", "duration": "30 мин", "exercises": []}`
-	_, err := parseWorkoutResponse(raw)
+func TestParseCombinedResponse_NoExercises(t *testing.T) {
+	raw := `{
+		"workout": {"title": "Тренировка", "duration": "30 мин", "exercises": []},
+		"nutrition": {"breakfast": "Каша", "lunch": "Суп", "dinner": "Рыба", "calories": "2000 ккал"},
+		"motivation": {"text": "Давай!"}
+	}`
+	_, err := parseCombinedResponse(raw)
 	if err == nil {
 		t.Fatal("expected error for empty exercises")
 	}
 }
 
-func TestParseNutritionResponse_Valid(t *testing.T) {
+func TestParseCombinedResponse_MissingCalories(t *testing.T) {
 	raw := `{
-		"breakfast": "Каша с ягодами (200 г)",
-		"lunch": "Куриная грудка с рисом (300 г)",
-		"dinner": "Рыба с овощами (250 г)",
-		"snacks": ["Яблоко", "Орехи (30 г)"],
-		"calories": "2000 ккал",
-		"protein": "120 г",
-		"fat": "65 г",
-		"carbs": "250 г",
-		"water_ml": "2500 мл"
+		"workout": {"title": "Тренировка", "duration": "30 мин", "exercises": [{"name": "Бег", "sets": "1", "reps": "20 мин"}]},
+		"nutrition": {"breakfast": "Каша", "lunch": "Суп", "dinner": "Рыба"},
+		"motivation": {"text": "Давай!"}
 	}`
-	resp, err := parseNutritionResponse(raw)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Breakfast != "Каша с ягодами (200 г)" {
-		t.Errorf("breakfast = %q", resp.Breakfast)
-	}
-	if resp.Calories != "2000 ккал" {
-		t.Errorf("calories = %q", resp.Calories)
-	}
-	if len(resp.Snacks) != 2 {
-		t.Errorf("snacks count = %d", len(resp.Snacks))
-	}
-}
-
-func TestParseNutritionResponse_MissingCalories(t *testing.T) {
-	raw := `{"breakfast": "Каша", "lunch": "Суп", "dinner": "Рыба"}`
-	_, err := parseNutritionResponse(raw)
+	_, err := parseCombinedResponse(raw)
 	if err == nil {
-		t.Fatal("expected error for missing calories")
+		t.Fatal("expected error for missing nutrition.calories")
 	}
 }
 
-func TestParseMotivationResponse_Valid(t *testing.T) {
-	raw := `{"text": "Давай, Алексей! 💪 Сегодня день ног, а не диванчика!"}`
-	resp, err := parseMotivationResponse(raw)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Text == "" {
-		t.Fatal("expected non-empty text")
-	}
-}
-
-func TestParseMotivationResponse_EmptyText(t *testing.T) {
-	raw := `{"text": ""}`
-	_, err := parseMotivationResponse(raw)
+func TestParseCombinedResponse_EmptyMotivation(t *testing.T) {
+	raw := `{
+		"workout": {"title": "Тренировка", "duration": "30 мин", "exercises": [{"name": "Бег", "sets": "1", "reps": "20 мин"}]},
+		"nutrition": {"breakfast": "Каша", "lunch": "Суп", "dinner": "Рыба", "calories": "2000 ккал"},
+		"motivation": {"text": ""}
+	}`
+	_, err := parseCombinedResponse(raw)
 	if err == nil {
-		t.Fatal("expected error for empty text")
+		t.Fatal("expected error for empty motivation.text")
 	}
 }
 

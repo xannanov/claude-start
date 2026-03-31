@@ -15,28 +15,28 @@ type Client interface {
 	ChatCompletion(ctx context.Context, req ChatRequest) (*ChatResponse, error)
 }
 
-// DeepSeekClient — реализация Client для DeepSeek API.
-type DeepSeekClient struct {
+// GLMClient — реализация Client для z.ai GLM API (OpenAI-совместимый формат).
+type GLMClient struct {
 	apiKey     string
 	baseURL    string
 	model      string
 	httpClient *http.Client
 }
 
-// NewDeepSeekClient создаёт клиент для DeepSeek API.
-func NewDeepSeekClient(apiKey, baseURL, model string) *DeepSeekClient {
-	return &DeepSeekClient{
+// NewGLMClient создаёт клиент для z.ai GLM API.
+func NewGLMClient(apiKey, baseURL, model string) *GLMClient {
+	return &GLMClient{
 		apiKey:  apiKey,
 		baseURL: baseURL,
 		model:   model,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 90 * time.Second,
 		},
 	}
 }
 
-// ChatCompletion отправляет запрос к DeepSeek API и возвращает ответ.
-func (c *DeepSeekClient) ChatCompletion(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
+// ChatCompletion отправляет запрос к GLM API и возвращает ответ.
+func (c *GLMClient) ChatCompletion(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	if req.Model == "" {
 		req.Model = c.model
 	}
@@ -57,30 +57,30 @@ func (c *DeepSeekClient) ChatCompletion(ctx context.Context, req ChatRequest) (*
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка HTTP-запроса к DeepSeek: %w", err)
+		return nil, fmt.Errorf("ошибка HTTP-запроса к GLM API: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка чтения ответа DeepSeek: %w", err)
+		return nil, fmt.Errorf("ошибка чтения ответа GLM API: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("DeepSeek вернул HTTP %d: %s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("GLM API вернул HTTP %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var chatResp ChatResponse
 	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return nil, fmt.Errorf("ошибка парсинга ответа DeepSeek: %w", err)
+		return nil, fmt.Errorf("ошибка парсинга ответа GLM API: %w", err)
 	}
 
 	if chatResp.Error != nil {
-		return nil, fmt.Errorf("ошибка API DeepSeek: %s", chatResp.Error.Message)
+		return nil, fmt.Errorf("ошибка API GLM: %s", chatResp.Error.Message)
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return nil, fmt.Errorf("DeepSeek вернул пустой ответ (нет choices)")
+		return nil, fmt.Errorf("GLM API вернул пустой ответ (нет choices)")
 	}
 
 	return &chatResp, nil

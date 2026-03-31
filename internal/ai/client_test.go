@@ -8,9 +8,8 @@ import (
 	"testing"
 )
 
-func TestDeepSeekClient_Success(t *testing.T) {
+func TestGLMClient_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Проверяем заголовки
 		if r.Header.Get("Authorization") != "Bearer test-key" {
 			t.Errorf("unexpected Authorization: %q", r.Header.Get("Authorization"))
 		}
@@ -24,12 +23,11 @@ func TestDeepSeekClient_Success(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
-		// Проверяем тело запроса
 		var req ChatRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Fatalf("failed to decode request: %v", err)
 		}
-		if req.Model != "deepseek-chat" {
+		if req.Model != "glm-4.7-flash" {
 			t.Errorf("unexpected model: %s", req.Model)
 		}
 
@@ -43,9 +41,9 @@ func TestDeepSeekClient_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewDeepSeekClient("test-key", server.URL, "deepseek-chat")
+	client := NewGLMClient("test-key", server.URL, "glm-4.7-flash")
 	resp, err := client.ChatCompletion(context.Background(), ChatRequest{
-		Model:    "deepseek-chat",
+		Model:    "glm-4.7-flash",
 		Messages: []ChatMessage{{Role: "user", Content: "тест"}},
 	})
 
@@ -60,14 +58,14 @@ func TestDeepSeekClient_Success(t *testing.T) {
 	}
 }
 
-func TestDeepSeekClient_HTTPError(t *testing.T) {
+func TestGLMClient_HTTPError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write([]byte("rate limited"))
 	}))
 	defer server.Close()
 
-	client := NewDeepSeekClient("test-key", server.URL, "deepseek-chat")
+	client := NewGLMClient("test-key", server.URL, "glm-4.7-flash")
 	_, err := client.ChatCompletion(context.Background(), ChatRequest{
 		Messages: []ChatMessage{{Role: "user", Content: "тест"}},
 	})
@@ -77,7 +75,7 @@ func TestDeepSeekClient_HTTPError(t *testing.T) {
 	}
 }
 
-func TestDeepSeekClient_APIError(t *testing.T) {
+func TestGLMClient_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := ChatResponse{
 			Error: &APIError{Message: "invalid api key"},
@@ -87,7 +85,7 @@ func TestDeepSeekClient_APIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewDeepSeekClient("bad-key", server.URL, "deepseek-chat")
+	client := NewGLMClient("bad-key", server.URL, "glm-4.7-flash")
 	_, err := client.ChatCompletion(context.Background(), ChatRequest{
 		Messages: []ChatMessage{{Role: "user", Content: "тест"}},
 	})
@@ -97,7 +95,7 @@ func TestDeepSeekClient_APIError(t *testing.T) {
 	}
 }
 
-func TestDeepSeekClient_EmptyChoices(t *testing.T) {
+func TestGLMClient_EmptyChoices(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := ChatResponse{Choices: []ChatChoice{}}
 		w.Header().Set("Content-Type", "application/json")
@@ -105,7 +103,7 @@ func TestDeepSeekClient_EmptyChoices(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewDeepSeekClient("test-key", server.URL, "deepseek-chat")
+	client := NewGLMClient("test-key", server.URL, "glm-4.7-flash")
 	_, err := client.ChatCompletion(context.Background(), ChatRequest{
 		Messages: []ChatMessage{{Role: "user", Content: "тест"}},
 	})

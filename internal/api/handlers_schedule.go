@@ -56,6 +56,17 @@ func (s *Server) handleScheduleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	count, err := s.store.CountActiveSchedulesByUserID(userID)
+	if err != nil {
+		slog.Error("ошибка подсчёта расписаний", "error", err)
+		http.Redirect(w, r, "/schedules?error=Ошибка+проверки+лимита", http.StatusSeeOther)
+		return
+	}
+	if count >= 14 {
+		http.Redirect(w, r, "/schedules?error=Достигнут+лимит+расписаний+(максимум+14)", http.StatusSeeOther)
+		return
+	}
+
 	emailType := emailTypeFromHour(timeHour)
 
 	schedule := &models.UserSchedule{
@@ -149,6 +160,16 @@ func (s *Server) handleAPIScheduleCreate(w http.ResponseWriter, r *http.Request)
 	}
 	if err := validation.ValidateMinute(req.TimeMinute); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	count, err := s.store.CountActiveSchedulesByUserID(userID)
+	if err != nil {
+		jsonError(w, "Ошибка проверки лимита расписаний", http.StatusInternalServerError)
+		return
+	}
+	if count >= 14 {
+		jsonError(w, "Достигнут лимит расписаний (максимум 14)", http.StatusUnprocessableEntity)
 		return
 	}
 

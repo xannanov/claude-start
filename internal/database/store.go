@@ -209,6 +209,19 @@ func (s *Store) UpdatePasswordHash(userID, passwordHash string) error {
 	return nil
 }
 
+// CountActiveSchedulesByUserID возвращает количество активных расписаний пользователя.
+func (s *Store) CountActiveSchedulesByUserID(userID string) (int, error) {
+	var count int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM user_schedules
+		WHERE user_id = $1 AND is_active = true
+	`, userID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("ошибка подсчёта расписаний: %w", err)
+	}
+	return count, nil
+}
+
 // CreateUserSchedule создаёт расписание. Возвращает ошибку если такое уже существует.
 func (s *Store) CreateUserSchedule(schedule *models.UserSchedule) error {
 	// Проверяем дубликат до вставки

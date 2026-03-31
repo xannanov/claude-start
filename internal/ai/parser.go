@@ -48,73 +48,35 @@ func extractJSON(text string) (string, error) {
 	return "", fmt.Errorf("не удалось извлечь JSON из ответа AI: %s", truncate(text, 200))
 }
 
-// parseWorkoutResponse парсит ответ AI в модель тренировки.
-func parseWorkoutResponse(raw string) (*aiWorkoutResponse, error) {
+// parseCombinedResponse парсит единый ответ AI с тренировкой, питанием и мотивацией.
+func parseCombinedResponse(raw string) (*aiCombinedResponse, error) {
 	jsonStr, err := extractJSON(raw)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp aiWorkoutResponse
+	var resp aiCombinedResponse
 	if err := json.Unmarshal([]byte(jsonStr), &resp); err != nil {
-		return nil, fmt.Errorf("ошибка парсинга JSON тренировки: %w", err)
+		return nil, fmt.Errorf("ошибка парсинга JSON: %w", err)
 	}
 
-	if resp.Title == "" {
-		return nil, fmt.Errorf("в ответе AI отсутствует title тренировки")
+	if resp.Workout.Title == "" {
+		return nil, fmt.Errorf("в ответе AI отсутствует workout.title")
 	}
-	if resp.Duration == "" {
-		return nil, fmt.Errorf("в ответе AI отсутствует duration тренировки")
+	if resp.Workout.Duration == "" {
+		return nil, fmt.Errorf("в ответе AI отсутствует workout.duration")
 	}
-	if len(resp.Exercises) < 1 {
+	if len(resp.Workout.Exercises) < 1 {
 		return nil, fmt.Errorf("в ответе AI нет упражнений")
 	}
-
-	return &resp, nil
-}
-
-// parseNutritionResponse парсит ответ AI в модель питания.
-func parseNutritionResponse(raw string) (*aiNutritionResponse, error) {
-	jsonStr, err := extractJSON(raw)
-	if err != nil {
-		return nil, err
+	if resp.Nutrition.Breakfast == "" {
+		return nil, fmt.Errorf("в ответе AI отсутствует nutrition.breakfast")
 	}
-
-	var resp aiNutritionResponse
-	if err := json.Unmarshal([]byte(jsonStr), &resp); err != nil {
-		return nil, fmt.Errorf("ошибка парсинга JSON питания: %w", err)
+	if resp.Nutrition.Calories == "" {
+		return nil, fmt.Errorf("в ответе AI отсутствует nutrition.calories")
 	}
-
-	if resp.Breakfast == "" {
-		return nil, fmt.Errorf("в ответе AI отсутствует breakfast")
-	}
-	if resp.Lunch == "" {
-		return nil, fmt.Errorf("в ответе AI отсутствует lunch")
-	}
-	if resp.Dinner == "" {
-		return nil, fmt.Errorf("в ответе AI отсутствует dinner")
-	}
-	if resp.Calories == "" {
-		return nil, fmt.Errorf("в ответе AI отсутствует calories")
-	}
-
-	return &resp, nil
-}
-
-// parseMotivationResponse парсит ответ AI в мотивацию.
-func parseMotivationResponse(raw string) (*aiMotivationResponse, error) {
-	jsonStr, err := extractJSON(raw)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp aiMotivationResponse
-	if err := json.Unmarshal([]byte(jsonStr), &resp); err != nil {
-		return nil, fmt.Errorf("ошибка парсинга JSON мотивации: %w", err)
-	}
-
-	if resp.Text == "" {
-		return nil, fmt.Errorf("в ответе AI отсутствует text мотивации")
+	if resp.Motivation.Text == "" {
+		return nil, fmt.Errorf("в ответе AI отсутствует motivation.text")
 	}
 
 	return &resp, nil

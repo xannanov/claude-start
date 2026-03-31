@@ -68,3 +68,10 @@ type aiNutritionResponse struct {
 type aiMotivationResponse struct {
 	Text string `json:"text"`
 }
+
+// aiCombinedResponse — единый ответ AI со всем контентом письма.
+type aiCombinedResponse struct {
+	Workout    aiWorkoutResponse    `json:"workout"`
+	Nutrition  aiNutritionResponse  `json:"nutrition"`
+	Motivation aiMotivationResponse `json:"motivation"`
+}

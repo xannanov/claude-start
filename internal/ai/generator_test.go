@@ -52,43 +52,46 @@ var testUser = models.User{
 	ActivityLevel: "active",
 }
 
-var validWorkoutJSON = `{
-	"title": "Силовая тренировка на грудь",
-	"muscle_group": "chest",
-	"duration": "45 минут",
-	"description": "Тренировка для набора мышечной массы",
-	"exercises": [
-		{"name": "Жим лёжа", "sets": "4 подхода", "reps": "8-10 раз"},
-		{"name": "Жим гантелей на наклонной", "sets": "3 подхода", "reps": "10-12 раз"},
-		{"name": "Разводка гантелей", "sets": "3 подхода", "reps": "12 раз"},
-		{"name": "Кроссовер", "sets": "3 подхода", "reps": "12-15 раз"}
-	]
+var validCombinedJSON = `{
+	"workout": {
+		"title": "Силовая тренировка на грудь",
+		"muscle_group": "chest",
+		"duration": "45 минут",
+		"description": "Тренировка для набора мышечной массы",
+		"exercises": [
+			{"name": "Жим лёжа", "sets": "4 подхода", "reps": "8-10 раз"},
+			{"name": "Жим гантелей на наклонной", "sets": "3 подхода", "reps": "10-12 раз"},
+			{"name": "Разводка гантелей", "sets": "3 подхода", "reps": "12 раз"},
+			{"name": "Кроссовер", "sets": "3 подхода", "reps": "12-15 раз"}
+		]
+	},
+	"nutrition": {
+		"breakfast": "Яичница из 3 яиц с тостами (200 г)",
+		"lunch": "Куриная грудка (200 г) с рисом (150 г) и салатом",
+		"dinner": "Лосось (180 г) с овощами на пару (200 г)",
+		"snacks": ["Творог 5% (200 г)", "Банан", "Протеиновый коктейль"],
+		"calories": "2800 ккал",
+		"protein": "180 г",
+		"fat": "80 г",
+		"carbs": "300 г",
+		"water_ml": "2800 мл"
+	},
+	"motivation": {
+		"text": "Алексей, подъём! 💪 Грудь сама себя не прокачает! Давай, чемпион! 🏆"
+	}
 }`
-
-var validNutritionJSON = `{
-	"breakfast": "Яичница из 3 яиц с тостами (200 г)",
-	"lunch": "Куриная грудка (200 г) с рисом (150 г) и салатом",
-	"dinner": "Лосось (180 г) с овощами на пару (200 г)",
-	"snacks": ["Творог 5% (200 г)", "Банан", "Протеиновый коктейль"],
-	"calories": "2800 ккал",
-	"protein": "180 г",
-	"fat": "80 г",
-	"carbs": "300 г",
-	"water_ml": "2800 мл"
-}`
-
-var validMotivationJSON = `{"text": "Алексей, подъём! 💪 Грудь сама себя не прокачает! Давай, чемпион! 🏆"}`
 
 func TestGenerator_SuccessfulGeneration(t *testing.T) {
 	mock := &mockClient{
-		responses: []string{validWorkoutJSON, validNutritionJSON, validMotivationJSON},
+		responses: []string{validCombinedJSON},
 	}
 
 	gen := &Generator{
-		client:      mock,
-		store:       nil,
-		model:       "deepseek-chat",
-		retryDelays: noDelays,
+		client:         mock,
+		store:          nil,
+		model:          "glm-4.7-flash",
+		retryDelays:    noDelays,
+		rateLimitDelay: 0,
 	}
 
 	msg := gen.GeneratePersonalizedMessage(testUser, 0, "morning")
@@ -122,7 +125,7 @@ func TestGenerator_SuccessfulGeneration(t *testing.T) {
 	}
 }
 
-func TestGenerator_FallbackOnAllWorkoutRetryFailed(t *testing.T) {
+func TestGenerator_FallbackOnAllRetryFailed(t *testing.T) {
 	mock := &mockClient{
 		errors: []error{
 			fmt.Errorf("timeout"),
@@ -132,10 +135,11 @@ func TestGenerator_FallbackOnAllWorkoutRetryFailed(t *testing.T) {
 	}
 
 	gen := &Generator{
-		client:      mock,
-		store:       nil,
-		model:       "deepseek-chat",
-		retryDelays: noDelays,
+		client:         mock,
+		store:          nil,
+		model:          "glm-4.7-flash",
+		retryDelays:    noDelays,
+		rateLimitDelay: 0,
 	}
 
 	msg := gen.GeneratePersonalizedMessage(testUser, 0, "morning")
@@ -151,46 +155,45 @@ func TestGenerator_FallbackOnAllWorkoutRetryFailed(t *testing.T) {
 	}
 }
 
-func TestGenerator_FallbackOnNutritionParseFailure(t *testing.T) {
+func TestGenerator_FallbackOnInvalidCombinedResponse(t *testing.T) {
 	mock := &mockClient{
 		responses: []string{
-			validWorkoutJSON,  // тренировка OK
-			"invalid json",    // питание fail 1
-			"invalid json",    // питание fail 2
-			"invalid json",    // питание fail 3
+			"invalid json", // fail 1
+			"invalid json", // fail 2
+			"invalid json", // fail 3
 		},
 	}
 
 	gen := &Generator{
-		client:      mock,
-		store:       nil,
-		model:       "deepseek-chat",
-		retryDelays: noDelays,
+		client:         mock,
+		store:          nil,
+		model:          "glm-4.7-flash",
+		retryDelays:    noDelays,
+		rateLimitDelay: 0,
 	}
 
 	msg := gen.GeneratePersonalizedMessage(testUser, 2, "afternoon")
 
 	if !msg.IsFallback {
-		t.Error("expected fallback on nutrition parse failure")
+		t.Error("expected fallback on parse failure")
 	}
 }
 
 func TestGenerator_RetrySucceedsOnSecondAttempt(t *testing.T) {
 	mock := &mockClient{
 		responses: []string{
-			"",                    // тренировка fail (пустой контент)
-			validWorkoutJSON,      // тренировка OK (retry)
-			validNutritionJSON,    // питание OK
-			validMotivationJSON,   // мотивация OK
+			"",               // fail (пустой контент)
+			validCombinedJSON, // OK (retry)
 		},
-		errors: []error{nil, nil, nil, nil},
+		errors: []error{nil, nil},
 	}
 
 	gen := &Generator{
-		client:      mock,
-		store:       nil,
-		model:       "deepseek-chat",
-		retryDelays: noDelays,
+		client:         mock,
+		store:          nil,
+		model:          "glm-4.7-flash",
+		retryDelays:    noDelays,
+		rateLimitDelay: 0,
 	}
 
 	msg := gen.GeneratePersonalizedMessage(testUser, 4, "evening")
@@ -216,9 +219,9 @@ func TestGenerator_GreetingByTimeOfDay(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.emailType, func(t *testing.T) {
 			mock := &mockClient{
-				responses: []string{validWorkoutJSON, validNutritionJSON, validMotivationJSON},
+				responses: []string{validCombinedJSON},
 			}
-			gen := &Generator{client: mock, store: nil, model: "deepseek-chat", retryDelays: noDelays}
+			gen := &Generator{client: mock, store: nil, model: "glm-4.7-flash", retryDelays: noDelays, rateLimitDelay: 0}
 			msg := gen.GeneratePersonalizedMessage(testUser, 0, tt.emailType)
 			if msg.Subject != tt.want {
 				t.Errorf("subject = %q, want %q", msg.Subject, tt.want)

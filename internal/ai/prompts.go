@@ -7,28 +7,50 @@ import (
 	"daily-email-sender/internal/models"
 )
 
-// buildWorkoutPrompt строит промпт для генерации тренировки.
-func buildWorkoutPrompt(user models.User, dayOfWeek, timeOfDay string, history []models.WorkoutHistory) []ChatMessage {
-	system := `Ты — профессиональный фитнес-тренер. Составь тренировку на сегодня.
-Ответ СТРОГО в формате JSON (без markdown-обёрток):
+// buildCombinedPrompt строит единый промпт для генерации тренировки, питания и мотивации.
+func buildCombinedPrompt(user models.User, dayOfWeek, timeOfDay string, history []models.WorkoutHistory) []ChatMessage {
+	system := `Ты — персональный фитнес-тренер и диетолог. Создай полный план на сегодня.
+
+ВЕРНИ ТОЛЬКО JSON — без markdown-блоков, без пояснений, без лишнего текста:
 {
-  "title": "название тренировки",
-  "muscle_group": "основная группа мышц (одно из: legs, chest, back, shoulders, arms, core, cardio)",
-  "duration": "длительность (например: 30-40 минут)",
-  "description": "краткое описание тренировки (1-2 предложения)",
-  "exercises": [
-    {"name": "название упражнения", "sets": "N подходов", "reps": "N раз или N сек"}
-  ]
+  "workout": {
+    "title": "название тренировки",
+    "muscle_group": "одно из: legs, chest, back, shoulders, arms, core, cardio",
+    "duration": "например: 40-50 минут",
+    "description": "1-2 предложения о тренировке",
+    "exercises": [
+      {"name": "Жим лёжа", "sets": "4 подхода", "reps": "8-10 раз"}
+    ]
+  },
+  "nutrition": {
+    "breakfast": "блюдо с граммовками (например: Овсянка 150г + яйцо 2шт + кофе)",
+    "lunch": "блюдо с граммовками",
+    "dinner": "блюдо с граммовками",
+    "snacks": ["перекус с граммовкой", "перекус с граммовкой"],
+    "calories": "2400 ккал",
+    "protein": "140 г",
+    "fat": "70 г",
+    "carbs": "280 г",
+    "water_ml": "2800 мл"
+  },
+  "motivation": {
+    "text": "мотивационное сообщение 2-3 предложения с юмором и эмодзи"
+  }
 }
 
-Правила:
+Требования к тренировке:
 - Ровно 4-6 упражнений
-- Утром (morning) — бодрящие, динамичные упражнения
-- Днём (afternoon) — стандартная нагрузка
-- Вечером (evening) — спокойнее, с акцентом на растяжку в конце
-- НЕ повторяй группу мышц, которая была в последние 1-2 дня
-- Разнообразие: не повторяй одинаковые упражнения из раза в раз
-- Все тексты на русском языке`
+- Утром (morning) — бодрящие, динамичные; вечером (evening) — спокойнее, растяжка в конце
+- НЕ повторяй muscle_group из истории последних 1-2 дней
+- Разнообразие упражнений каждый день
+
+Требования к питанию:
+- Российские продукты, конкретные блюда с граммовками
+- БЖУ и ккал соответствуют цели и параметрам пользователя
+- 2-3 перекуса
+
+Требования к мотивации:
+- Обращение по имени, дружеский юмор, подколки, эмодзи`
 
 	var historyStr string
 	if len(history) > 0 {
@@ -36,91 +58,29 @@ func buildWorkoutPrompt(user models.User, dayOfWeek, timeOfDay string, history [
 		for _, h := range history {
 			parts = append(parts, fmt.Sprintf("%s — %s", h.Date.Format("02.01"), h.MuscleGroup))
 		}
-		historyStr = fmt.Sprintf("\nПоследние тренировки: %s", strings.Join(parts, ", "))
+		historyStr = fmt.Sprintf("\nПоследние тренировки (не повторяй группу мышц): %s", strings.Join(parts, ", "))
 	} else {
-		historyStr = "\nИстория тренировок пуста (первая тренировка)."
+		historyStr = "\nИстория тренировок пуста — первая тренировка, выбери любую группу мышц."
 	}
 
-	user_msg := fmt.Sprintf(`Данные пользователя:
+	userMsg := fmt.Sprintf(`Данные пользователя:
+- Имя: %s
 - Пол: %s
 - Возраст: %d лет
-- Рост: %d см
-- Вес: %.1f кг
+- Рост: %d см, Вес: %.1f кг
 - Цель: %s
 - Уровень активности: %s
 - День недели: %s
 - Время суток: %s%s`,
-		genderRu(user.Gender), user.Age, user.HeightCm, user.WeightKg,
+		user.FirstName,
+		genderRu(user.Gender), user.Age,
+		user.HeightCm, user.WeightKg,
 		goalRu(user.Goal), activityRu(user.ActivityLevel),
 		dayOfWeek, timeOfDay, historyStr)
 
 	return []ChatMessage{
 		{Role: "system", Content: system},
-		{Role: "user", Content: user_msg},
-	}
-}
-
-// buildNutritionPrompt строит промпт для генерации плана питания.
-func buildNutritionPrompt(user models.User) []ChatMessage {
-	system := `Ты — диетолог. Составь план питания на день.
-Ответ СТРОГО в формате JSON (без markdown-обёрток):
-{
-  "breakfast": "конкретное блюдо с граммовками",
-  "lunch": "конкретное блюдо с граммовками",
-  "dinner": "конкретное блюдо с граммовками",
-  "snacks": ["перекус 1 с граммовкой", "перекус 2 с граммовкой"],
-  "calories": "N ккал",
-  "protein": "N г",
-  "fat": "N г",
-  "carbs": "N г",
-  "water_ml": "N мл"
-}
-
-Правила:
-- Продукты, доступные в России (реалистичные блюда)
-- Конкретные граммовки (не "порция", а "150 г")
-- Расчёт БЖУ и калорий на основе данных пользователя
-- Разнообразие блюд (не повторяй одно и то же каждый день)
-- 2-3 перекуса
-- Все тексты на русском языке`
-
-	user_msg := fmt.Sprintf(`Данные пользователя:
-- Пол: %s
-- Возраст: %d лет
-- Рост: %d см
-- Вес: %.1f кг
-- Цель: %s
-- Уровень активности: %s`,
-		genderRu(user.Gender), user.Age, user.HeightCm, user.WeightKg,
-		goalRu(user.Goal), activityRu(user.ActivityLevel))
-
-	return []ChatMessage{
-		{Role: "system", Content: system},
-		{Role: "user", Content: user_msg},
-	}
-}
-
-// buildMotivationPrompt строит промпт для генерации мотивационного сообщения.
-func buildMotivationPrompt(user models.User, dayOfWeek string) []ChatMessage {
-	system := `Ты — лучший друг, который тащит в зал. Напиши мотивационное сообщение.
-Ответ СТРОГО в формате JSON (без markdown-обёрток):
-{"text": "мотивационное сообщение"}
-
-Правила:
-- 2-3 предложения
-- Юмор, подколки, дружеский тон
-- Используй эмодзи
-- Обращайся по имени
-- Каждое сообщение уникальное
-- На русском языке`
-
-	user_msg := fmt.Sprintf(`Имя: %s
-День недели: %s
-Цель: %s`, user.FirstName, dayOfWeek, goalRu(user.Goal))
-
-	return []ChatMessage{
-		{Role: "system", Content: system},
-		{Role: "user", Content: user_msg},
+		{Role: "user", Content: userMsg},
 	}
 }
 

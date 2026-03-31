@@ -18,6 +18,12 @@ import (
 
 const maxConsecutiveErrors = 10
 
+// taskQueueSize — максимальный размер буфера очереди AI-задач.
+const taskQueueSize = 100
+
+// defaultTaskInterval — интервал между задачами в очереди (защита от rate limit API).
+const defaultTaskInterval = 8 * time.Second
+
 var moscowTZ *time.Location
 
 func init() {
@@ -29,12 +35,24 @@ func init() {
 	}
 }
 
+// emailTask — задача на отправку письма одному пользователю.
+type emailTask struct {
+	scheduleID int
+	userID     string
+	dayOfWeek  int
+	hour       int
+	minute     int
+	emailType  string
+}
+
 // Scheduler управляет периодической отправкой писем по расписаниям пользователей.
 type Scheduler struct {
 	store             *database.Store
 	sender            *email.Sender
 	aiGenerator       *ai.Generator
 	interval          time.Duration
+	taskInterval      time.Duration
+	taskQueue         chan emailTask
 	stopChan          chan struct{}
 	wg                sync.WaitGroup
 	consecutiveErrors int
@@ -43,21 +61,31 @@ type Scheduler struct {
 // New создаёт планировщик. aiGen может быть nil (AI отключён).
 func New(store *database.Store, sender *email.Sender, aiGen *ai.Generator, interval time.Duration) *Scheduler {
 	return &Scheduler{
-		store:       store,
-		sender:      sender,
-		aiGenerator: aiGen,
-		interval:    interval,
-		stopChan:    make(chan struct{}),
+		store:        store,
+		sender:       sender,
+		aiGenerator:  aiGen,
+		interval:     interval,
+		taskInterval: defaultTaskInterval,
+		taskQueue:    make(chan emailTask, taskQueueSize),
+		stopChan:     make(chan struct{}),
 	}
 }
 
 // Start запускает планировщик в горутине.
 func (s *Scheduler) Start() {
-	s.wg.Add(1)
+	s.wg.Add(2)
+
+	// Горутина обработки очереди
+	go func() {
+		defer s.wg.Done()
+		s.processQueue()
+	}()
+
+	// Горутина проверки расписаний
 	go func() {
 		defer s.wg.Done()
 
-		slog.Info("планировщик запущен", "interval", s.interval)
+		slog.Info("планировщик запущен", "interval", s.interval, "task_interval", s.taskInterval)
 
 		// Сразу проверяем при старте
 		s.checkAndSendEmails()
@@ -89,6 +117,7 @@ func GoWeekdayToISO(goWeekday time.Weekday) int {
 	return (int(goWeekday) + 6) % 7
 }
 
+// checkAndSendEmails проверяет расписания и добавляет задачи в очередь.
 func (s *Scheduler) checkAndSendEmails() {
 	now := time.Now().In(moscowTZ)
 	dayOfWeek := GoWeekdayToISO(now.Weekday())
@@ -119,14 +148,40 @@ func (s *Scheduler) checkAndSendEmails() {
 	}
 	s.consecutiveErrors = 0
 
-	sent := 0
 	for _, sc := range schedules {
 		if sc.TimeHour == currentHour && sc.TimeMinute == currentMinute {
-			if sent > 0 {
-				time.Sleep(300 * time.Millisecond)
+			task := emailTask{
+				scheduleID: sc.ID,
+				userID:     sc.UserID,
+				dayOfWeek:  sc.DayOfWeek,
+				hour:       sc.TimeHour,
+				minute:     sc.TimeMinute,
+				emailType:  sc.EmailType,
 			}
-			s.sendEmailForSchedule(sc.ID, sc.UserID, sc.DayOfWeek, sc.TimeHour, sc.TimeMinute, sc.EmailType)
-			sent++
+			select {
+			case s.taskQueue <- task:
+				slog.Info("задача добавлена в очередь", "user_id", sc.UserID, "schedule_id", sc.ID)
+			default:
+				slog.Warn("очередь задач переполнена, пропуск", "user_id", sc.UserID, "schedule_id", sc.ID)
+			}
+		}
+	}
+}
+
+// processQueue обрабатывает задачи из очереди с интервалом taskInterval.
+func (s *Scheduler) processQueue() {
+	for {
+		select {
+		case task := <-s.taskQueue:
+			s.sendEmailForSchedule(task.scheduleID, task.userID, task.dayOfWeek, task.hour, task.minute, task.emailType)
+			// Ждём перед следующей задачей (rate limit защита)
+			select {
+			case <-time.After(s.taskInterval):
+			case <-s.stopChan:
+				return
+			}
+		case <-s.stopChan:
+			return
 		}
 	}
 }

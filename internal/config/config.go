@@ -13,14 +13,14 @@ import (
 
 // Config содержит все настройки приложения.
 type Config struct {
-	DatabaseURL    string
-	SMTP           SMTPConfig
-	EmailFrom      string
-	ServerPort     string // порт HTTP-сервера (по умолчанию 8080)
-	SecretKey      []byte // ключ для подписи токенов (HMAC)
-	DeepSeekAPIKey string // ключ DeepSeek API (пустой = AI отключён)
-	DeepSeekModel  string // модель DeepSeek (по умолчанию deepseek-chat)
-	DeepSeekURL    string // базовый URL DeepSeek API
+	DatabaseURL string
+	SMTP        SMTPConfig
+	EmailFrom   string
+	ServerPort  string // порт HTTP-сервера (по умолчанию 8080)
+	SecretKey   []byte // ключ для подписи токенов (HMAC)
+	GLMAPIKey   string // ключ z.ai GLM API (пустой = AI отключён)
+	GLMModel    string // модель GLM (по умолчанию glm-4.7-flash)
+	GLMURL      string // базовый URL z.ai GLM API
 }
 
 // SMTPConfig содержит параметры SMTP-сервера
@@ -80,30 +80,30 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	deepSeekAPIKey := os.Getenv("DEEPSEEK_API_KEY")
-	if deepSeekAPIKey == "" {
-		slog.Warn("DEEPSEEK_API_KEY не задан — AI-персонализация отключена, используются шаблоны")
+	glmAPIKey := os.Getenv("GLM_API_KEY")
+	if glmAPIKey == "" {
+		slog.Warn("GLM_API_KEY не задан — AI-персонализация отключена, используются шаблоны")
 	}
 
-	deepSeekModel := os.Getenv("DEEPSEEK_MODEL")
-	if deepSeekModel == "" {
-		deepSeekModel = "deepseek-chat"
+	glmModel := os.Getenv("GLM_MODEL")
+	if glmModel == "" {
+		glmModel = "glm-4.7-flash"
 	}
 
-	deepSeekURL := os.Getenv("DEEPSEEK_URL")
-	if deepSeekURL == "" {
-		deepSeekURL = "https://api.deepseek.com"
+	glmURL := os.Getenv("GLM_URL")
+	if glmURL == "" {
+		glmURL = "https://api.z.ai/api/paas/v4"
 	}
 
 	return &Config{
-		DatabaseURL:    dbURL,
-		SMTP:           smtp,
-		EmailFrom:      emailCfg.From,
-		ServerPort:     port,
-		SecretKey:      secretKey,
-		DeepSeekAPIKey: deepSeekAPIKey,
-		DeepSeekModel:  deepSeekModel,
-		DeepSeekURL:    deepSeekURL,
+		DatabaseURL: dbURL,
+		SMTP:        smtp,
+		EmailFrom:   emailCfg.From,
+		ServerPort:  port,
+		SecretKey:   secretKey,
+		GLMAPIKey:   glmAPIKey,
+		GLMModel:    glmModel,
+		GLMURL:      glmURL,
 	}, nil
 }
 
