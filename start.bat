@@ -1,23 +1,24 @@
 @echo off
-chcp 65001 > nul
 cd /d "%~dp0"
 
-echo Сборка...
+echo Building...
 go build -o server.exe .\cmd\server\
 if %ERRORLEVEL% neq 0 (
-    echo Ошибка сборки!
+    echo Build failed!
     pause
     exit /b 1
 )
 
-echo Инициализация БД...
+echo Init DB...
 server.exe init-db
 if %ERRORLEVEL% neq 0 (
-    echo Ошибка инициализации БД!
+    echo DB init failed!
     pause
     exit /b 1
 )
 
-echo Запуск сервера http://localhost:8080
+echo Starting server http://localhost:8080
 server.exe serve
+
+echo Server stopped.
 pause
