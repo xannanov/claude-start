@@ -120,14 +120,14 @@ func runServe() error {
 		return fmt.Errorf("ошибка создания сервера: %w", err)
 	}
 
-	// Инициализация AI-генератора (z.ai GLM)
+	// Инициализация AI-генератора (Groq API)
 	var aiGen *ai.Generator
-	if cfg.GLMAPIKey != "" {
-		glmClient := ai.NewGLMClient(cfg.GLMAPIKey, cfg.GLMURL, cfg.GLMModel)
-		aiGen = ai.NewGenerator(glmClient, store, cfg.GLMModel)
-		slog.Info("AI-персонализация включена", "model", cfg.GLMModel)
+	if cfg.AIAPIKey != "" {
+		groqClient := ai.NewGroqClient(cfg.AIAPIKey, cfg.AIURL, cfg.AIModel)
+		aiGen = ai.NewGenerator(groqClient, store, cfg.AIModel)
+		slog.Info("AI-персонализация включена", "model", cfg.AIModel)
 	} else {
-		slog.Warn("AI-персонализация отключена (GLM_API_KEY не задан)")
+		slog.Warn("AI-персонализация отключена (AI_API_KEY не задан)")
 	}
 
 	// Запускаем scheduler в фоне
@@ -217,12 +217,12 @@ func runScheduler() error {
 	slog.Info("SMTP-соединение успешно проверено")
 
 	var aiGen *ai.Generator
-	if cfg.GLMAPIKey != "" {
-		glmClient := ai.NewGLMClient(cfg.GLMAPIKey, cfg.GLMURL, cfg.GLMModel)
-		aiGen = ai.NewGenerator(glmClient, store, cfg.GLMModel)
-		slog.Info("AI-персонализация включена", "model", cfg.GLMModel)
+	if cfg.AIAPIKey != "" {
+		groqClient := ai.NewGroqClient(cfg.AIAPIKey, cfg.AIURL, cfg.AIModel)
+		aiGen = ai.NewGenerator(groqClient, store, cfg.AIModel)
+		slog.Info("AI-персонализация включена", "model", cfg.AIModel)
 	} else {
-		slog.Warn("AI-персонализация отключена (GLM_API_KEY не задан)")
+		slog.Warn("AI-персонализация отключена (AI_API_KEY не задан)")
 	}
 
 	scheduler.Run(store, sender, aiGen, 1*time.Minute, context.Background())

@@ -89,7 +89,7 @@ func TestGenerator_SuccessfulGeneration(t *testing.T) {
 	gen := &Generator{
 		client:         mock,
 		store:          nil,
-		model:          "glm-4.7-flash",
+		model:          "llama-3.3-70b-versatile",
 		retryDelays:    noDelays,
 		rateLimitDelay: 0,
 	}
@@ -137,7 +137,7 @@ func TestGenerator_FallbackOnAllRetryFailed(t *testing.T) {
 	gen := &Generator{
 		client:         mock,
 		store:          nil,
-		model:          "glm-4.7-flash",
+		model:          "llama-3.3-70b-versatile",
 		retryDelays:    noDelays,
 		rateLimitDelay: 0,
 	}
@@ -167,7 +167,7 @@ func TestGenerator_FallbackOnInvalidCombinedResponse(t *testing.T) {
 	gen := &Generator{
 		client:         mock,
 		store:          nil,
-		model:          "glm-4.7-flash",
+		model:          "llama-3.3-70b-versatile",
 		retryDelays:    noDelays,
 		rateLimitDelay: 0,
 	}
@@ -191,7 +191,7 @@ func TestGenerator_RetrySucceedsOnSecondAttempt(t *testing.T) {
 	gen := &Generator{
 		client:         mock,
 		store:          nil,
-		model:          "glm-4.7-flash",
+		model:          "llama-3.3-70b-versatile",
 		retryDelays:    noDelays,
 		rateLimitDelay: 0,
 	}
@@ -221,7 +221,7 @@ func TestGenerator_GreetingByTimeOfDay(t *testing.T) {
 			mock := &mockClient{
 				responses: []string{validCombinedJSON},
 			}
-			gen := &Generator{client: mock, store: nil, model: "glm-4.7-flash", retryDelays: noDelays, rateLimitDelay: 0}
+			gen := &Generator{client: mock, store: nil, model: "llama-3.3-70b-versatile", retryDelays: noDelays, rateLimitDelay: 0}
 			msg := gen.GeneratePersonalizedMessage(testUser, 0, tt.emailType)
 			if msg.Subject != tt.want {
 				t.Errorf("subject = %q, want %q", msg.Subject, tt.want)

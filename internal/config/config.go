@@ -18,9 +18,9 @@ type Config struct {
 	EmailFrom   string
 	ServerPort  string // порт HTTP-сервера (по умолчанию 8080)
 	SecretKey   []byte // ключ для подписи токенов (HMAC)
-	GLMAPIKey   string // ключ z.ai GLM API (пустой = AI отключён)
-	GLMModel    string // модель GLM (по умолчанию glm-4.7-flash)
-	GLMURL      string // базовый URL z.ai GLM API
+	AIAPIKey string // ключ Groq API (пустой = AI отключён)
+	AIModel  string // модель AI (по умолчанию llama-3.3-70b-versatile)
+	AIURL    string // базовый URL Groq API
 }
 
 // SMTPConfig содержит параметры SMTP-сервера
@@ -80,19 +80,19 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	glmAPIKey := os.Getenv("GLM_API_KEY")
-	if glmAPIKey == "" {
-		slog.Warn("GLM_API_KEY не задан — AI-персонализация отключена, используются шаблоны")
+	aiAPIKey := os.Getenv("AI_API_KEY")
+	if aiAPIKey == "" {
+		slog.Warn("AI_API_KEY не задан — AI-персонализация отключена, используются шаблоны")
 	}
 
-	glmModel := os.Getenv("GLM_MODEL")
-	if glmModel == "" {
-		glmModel = "glm-4.7-flash"
+	aiModel := os.Getenv("AI_MODEL")
+	if aiModel == "" {
+		aiModel = "llama-3.3-70b-versatile"
 	}
 
-	glmURL := os.Getenv("GLM_URL")
-	if glmURL == "" {
-		glmURL = "https://api.z.ai/api/paas/v4"
+	aiURL := os.Getenv("AI_URL")
+	if aiURL == "" {
+		aiURL = "https://api.groq.com/openai/v1"
 	}
 
 	return &Config{
@@ -101,9 +101,9 @@ func Load() (*Config, error) {
 		EmailFrom:   emailCfg.From,
 		ServerPort:  port,
 		SecretKey:   secretKey,
-		GLMAPIKey:   glmAPIKey,
-		GLMModel:    glmModel,
-		GLMURL:      glmURL,
+		AIAPIKey: aiAPIKey,
+		AIModel:  aiModel,
+		AIURL:    aiURL,
 	}, nil
 }
 

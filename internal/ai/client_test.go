@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestGLMClient_Success(t *testing.T) {
+func TestGroqClient_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer test-key" {
 			t.Errorf("unexpected Authorization: %q", r.Header.Get("Authorization"))
@@ -27,7 +27,7 @@ func TestGLMClient_Success(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Fatalf("failed to decode request: %v", err)
 		}
-		if req.Model != "glm-4.7-flash" {
+		if req.Model != "llama-3.3-70b-versatile" {
 			t.Errorf("unexpected model: %s", req.Model)
 		}
 
@@ -41,9 +41,9 @@ func TestGLMClient_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewGLMClient("test-key", server.URL, "glm-4.7-flash")
+	client := NewGroqClient("test-key", server.URL, "llama-3.3-70b-versatile")
 	resp, err := client.ChatCompletion(context.Background(), ChatRequest{
-		Model:    "glm-4.7-flash",
+		Model:    "llama-3.3-70b-versatile",
 		Messages: []ChatMessage{{Role: "user", Content: "тест"}},
 	})
 
@@ -58,14 +58,14 @@ func TestGLMClient_Success(t *testing.T) {
 	}
 }
 
-func TestGLMClient_HTTPError(t *testing.T) {
+func TestGroqClient_HTTPError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write([]byte("rate limited"))
 	}))
 	defer server.Close()
 
-	client := NewGLMClient("test-key", server.URL, "glm-4.7-flash")
+	client := NewGroqClient("test-key", server.URL, "llama-3.3-70b-versatile")
 	_, err := client.ChatCompletion(context.Background(), ChatRequest{
 		Messages: []ChatMessage{{Role: "user", Content: "тест"}},
 	})
@@ -75,7 +75,7 @@ func TestGLMClient_HTTPError(t *testing.T) {
 	}
 }
 
-func TestGLMClient_APIError(t *testing.T) {
+func TestGroqClient_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := ChatResponse{
 			Error: &APIError{Message: "invalid api key"},
@@ -85,7 +85,7 @@ func TestGLMClient_APIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewGLMClient("bad-key", server.URL, "glm-4.7-flash")
+	client := NewGroqClient("bad-key", server.URL, "llama-3.3-70b-versatile")
 	_, err := client.ChatCompletion(context.Background(), ChatRequest{
 		Messages: []ChatMessage{{Role: "user", Content: "тест"}},
 	})
@@ -95,7 +95,7 @@ func TestGLMClient_APIError(t *testing.T) {
 	}
 }
 
-func TestGLMClient_EmptyChoices(t *testing.T) {
+func TestGroqClient_EmptyChoices(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := ChatResponse{Choices: []ChatChoice{}}
 		w.Header().Set("Content-Type", "application/json")
@@ -103,7 +103,7 @@ func TestGLMClient_EmptyChoices(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewGLMClient("test-key", server.URL, "glm-4.7-flash")
+	client := NewGroqClient("test-key", server.URL, "llama-3.3-70b-versatile")
 	_, err := client.ChatCompletion(context.Background(), ChatRequest{
 		Messages: []ChatMessage{{Role: "user", Content: "тест"}},
 	})

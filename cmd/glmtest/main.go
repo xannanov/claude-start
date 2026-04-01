@@ -11,9 +11,9 @@ import (
 )
 
 func main() {
-	apiKey := os.Getenv("GLM_API_KEY")
-	baseURL := os.Getenv("GLM_URL")
-	model := os.Getenv("GLM_MODEL")
+	apiKey := os.Getenv("AI_API_KEY")
+	baseURL := os.Getenv("AI_URL")
+	model := os.Getenv("AI_MODEL")
 
 	payload := map[string]any{
 		"model": model,

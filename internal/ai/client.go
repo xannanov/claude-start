@@ -15,17 +15,17 @@ type Client interface {
 	ChatCompletion(ctx context.Context, req ChatRequest) (*ChatResponse, error)
 }
 
-// GLMClient — реализация Client для z.ai GLM API (OpenAI-совместимый формат).
-type GLMClient struct {
+// GroqClient — реализация Client для Groq API (OpenAI-совместимый формат).
+type GroqClient struct {
 	apiKey     string
 	baseURL    string
 	model      string
 	httpClient *http.Client
 }
 
-// NewGLMClient создаёт клиент для z.ai GLM API.
-func NewGLMClient(apiKey, baseURL, model string) *GLMClient {
-	return &GLMClient{
+// NewGroqClient создаёт клиент для Groq API.
+func NewGroqClient(apiKey, baseURL, model string) *GroqClient {
+	return &GroqClient{
 		apiKey:  apiKey,
 		baseURL: baseURL,
 		model:   model,
@@ -35,8 +35,8 @@ func NewGLMClient(apiKey, baseURL, model string) *GLMClient {
 	}
 }
 
-// ChatCompletion отправляет запрос к GLM API и возвращает ответ.
-func (c *GLMClient) ChatCompletion(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
+// ChatCompletion отправляет запрос к Groq API и возвращает ответ.
+func (c *GroqClient) ChatCompletion(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	if req.Model == "" {
 		req.Model = c.model
 	}
@@ -46,8 +46,8 @@ func (c *GLMClient) ChatCompletion(ctx context.Context, req ChatRequest) (*ChatR
 		return nil, fmt.Errorf("ошибка сериализации запроса: %w", err)
 	}
 
-	url := c.baseURL + "/chat/completions"
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	apiURL := c.baseURL + "/chat/completions"
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("ошибка создания HTTP-запроса: %w", err)
 	}
@@ -57,30 +57,30 @@ func (c *GLMClient) ChatCompletion(ctx context.Context, req ChatRequest) (*ChatR
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка HTTP-запроса к GLM API: %w", err)
+		return nil, fmt.Errorf("ошибка HTTP-запроса к Groq API: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка чтения ответа GLM API: %w", err)
+		return nil, fmt.Errorf("ошибка чтения ответа Groq API: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GLM API вернул HTTP %d: %s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("Groq API вернул HTTP %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var chatResp ChatResponse
 	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return nil, fmt.Errorf("ошибка парсинга ответа GLM API: %w", err)
+		return nil, fmt.Errorf("ошибка парсинга ответа Groq API: %w", err)
 	}
 
 	if chatResp.Error != nil {
-		return nil, fmt.Errorf("ошибка API GLM: %s", chatResp.Error.Message)
+		return nil, fmt.Errorf("ошибка Groq API: %s", chatResp.Error.Message)
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return nil, fmt.Errorf("GLM API вернул пустой ответ (нет choices)")
+		return nil, fmt.Errorf("Groq API вернул пустой ответ (нет choices)")
 	}
 
 	return &chatResp, nil

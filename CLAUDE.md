@@ -5,7 +5,7 @@ Go-приложение для отправки персонализирован
 - **Язык:** Go 1.21+
 - **БД:** PostgreSQL (таблицы: users, user_schedules, email_logs, workout_history)
 - **SMTP:** Yandex (smtp.yandex.ru:465, лимит ~500 писем/день)
-- **AI:** DeepSeek API (deepseek-chat) — генерация тренировок, питания, мотивации
+- **AI:** Groq API (llama-3.3-70b-versatile) — генерация тренировок, питания, мотивации
 - **UI:** Server-side rendering (Go html/template + Pico.css)
 - **Авторизация:** bcrypt + session cookie / JWT
 - **Таймзона:** Moscow (UTC+3), только русский язык
