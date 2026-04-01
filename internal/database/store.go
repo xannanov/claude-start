@@ -140,9 +140,31 @@ func (s *Store) CreateUser(user *models.User) error {
 
 // CreateUserWithPassword создаёт пользователя с хешем пароля.
 // Если passwordHash пустой — поле password_hash будет NULL.
+// Если пользователь с таким email деактивирован — реактивирует его с новыми данными.
 func (s *Store) CreateUserWithPassword(user *models.User, passwordHash string) error {
-	if _, err := s.GetUserByEmail(user.Email); err == nil {
+	// Проверяем всех пользователей (включая неактивных) чтобы не упасть на UNIQUE constraint
+	var existingID string
+	var isActive bool
+	err := s.db.QueryRow(
+		`SELECT id, is_active FROM users WHERE email = $1`, user.Email,
+	).Scan(&existingID, &isActive)
+
+	if err == nil && isActive {
 		return fmt.Errorf("пользователь с email '%s' уже существует", user.Email)
+	}
+
+	if err == nil && !isActive {
+		// Реактивируем деактивированного пользователя с новыми данными
+		return s.db.QueryRow(`
+			UPDATE users SET
+				password_hash = NULLIF($2, ''), first_name = $3, last_name = $4,
+				age = $5, gender = $6, height_cm = $7, weight_kg = $8,
+				goal = $9, activity_level = $10, is_active = true, updated_at = CURRENT_TIMESTAMP
+			WHERE id = $1
+			RETURNING id, created_at, updated_at`,
+			existingID, passwordHash, user.FirstName, user.LastName, user.Age, user.Gender,
+			user.HeightCm, user.WeightKg, user.Goal, user.ActivityLevel,
+		).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 	}
 
 	query := `
@@ -153,7 +175,7 @@ func (s *Store) CreateUserWithPassword(user *models.User, passwordHash string) e
 		RETURNING id, created_at, updated_at
 	`
 
-	err := s.db.QueryRow(
+	err = s.db.QueryRow(
 		query,
 		user.Email, passwordHash, user.FirstName, user.LastName, user.Age, user.Gender,
 		user.HeightCm, user.WeightKg, user.Goal, user.ActivityLevel, true,
